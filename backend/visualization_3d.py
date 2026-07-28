@@ -17,6 +17,8 @@ except (ImportError, ValueError):
     from backend.utils import safe_float, safe_int
     from backend.time_series_engine import EquineTimeSeriesEngine
 
+__version__ = "2.1.0"
+
 
 class EquineVisualization3D:
     """Hedge Fund Quantitative Data Design & Visual Architecture Suite."""
@@ -96,7 +98,6 @@ class EquineVisualization3D:
             speeds = [safe_int(a.get("beyer_speed"), 110) for a in valid_assets]
             tags = [str(a.get("asset_tag"), "MID_TIER_HEDGE") for a in valid_assets]
 
-            # Risk metric = Implied odds volatility / odds variance
             risks = [round(o * 1.8, 1) for o in odds]
 
             color_map = {"VALUE_BUY": "#10B981", "OVERVALUED_FADE": "#F43F5E", "MID_TIER_HEDGE": "#F59E0B"}
@@ -607,7 +608,7 @@ class EquineVisualization3D:
     def build_6d_equine_quant_radar(cls, asset: Dict[str, Any]) -> go.Figure:
         """Generates 6D Equine Quant Radar plot safely."""
         if not isinstance(asset, dict):
-            return cls._create_empty_fig("🎯 6D Performance Radar")
+            return cls._create_empty_fig("🎯 Performance Radar")
 
         try:
             metrics = ["Speed Rating", "Form Momentum", "Value Index (A/E)", "Moisture Fit", "Trainer Skill", "Market Depth"]
