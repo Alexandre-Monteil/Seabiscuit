@@ -1,6 +1,6 @@
 """
-SEABISCUIT - Single-Page Mega Bloomberg Terminal Dashboard (World-Class Data Design & Structured Tabs Edition)
-Organizes quantitative data, analytics, simulators, backtesting, and AI dossiers into 4 sleek institutional tabs.
+SEABISCUIT - Single-Page Mega Bloomberg Terminal Dashboard (Expanded All-Plots & Actionable Architecture Edition)
+Features top executive summary table, EV-sorted runner cards, and ALL 11 quantitative visual analytics models on a single page.
 """
 
 import os
@@ -47,57 +47,6 @@ st.markdown("""
         background: #F8FAFC !important;
     }
 
-    .gaming-card-green {
-        background: #FFFFFF !important;
-        border: 2px solid #10B981 !important;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12) !important;
-        border-radius: 12px;
-    }
-    
-    .gaming-card-red {
-        background: #FFFFFF !important;
-        border: 2px solid #F43F5E !important;
-        box-shadow: 0 4px 12px rgba(244, 63, 94, 0.12) !important;
-        border-radius: 12px;
-    }
-
-    .gaming-card-gold {
-        background: #FFFFFF !important;
-        border: 2px solid #F59E0B !important;
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12) !important;
-        border-radius: 12px;
-    }
-
-    .badge-pepite {
-        background: #10B981 !important;
-        color: #FFFFFF !important;
-        font-weight: 900 !important;
-        padding: 4px 10px !important;
-        border-radius: 6px !important;
-        font-size: 0.82rem !important;
-        letter-spacing: 0.5px !important;
-    }
-    
-    .badge-piege {
-        background: #F43F5E !important;
-        color: #FFFFFF !important;
-        font-weight: 900 !important;
-        padding: 4px 10px !important;
-        border-radius: 6px !important;
-        font-size: 0.82rem !important;
-        letter-spacing: 0.5px !important;
-    }
-
-    .badge-outsider {
-        background: #F59E0B !important;
-        color: #000000 !important;
-        font-weight: 900 !important;
-        padding: 4px 10px !important;
-        border-radius: 6px !important;
-        font-size: 0.82rem !important;
-        letter-spacing: 0.5px !important;
-    }
-
     .quant-pill {
         background: #F1F5F9 !important;
         border: 1px solid #CBD5E1 !important;
@@ -122,28 +71,6 @@ st.markdown("""
         color: #0F172A !important;
         border-color: #CBD5E1 !important;
         font-weight: 700 !important;
-    }
-
-    /* Tab Custom Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #E2E8F0;
-        padding: 6px;
-        border-radius: 10px;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        height: 48px;
-        background-color: #FFFFFF;
-        border-radius: 8px;
-        color: #475569;
-        font-weight: 800;
-        font-size: 0.95rem;
-    }
-
-    .stTabs [aria-selected="true"] {
-        background-color: #4338CA !important;
-        color: #FFFFFF !important;
     }
 
     .stButton > button {
@@ -239,7 +166,7 @@ def main():
         current_racecard = active_racecards[selected_idx]
 
     with filter_col:
-        show_pepites_only = st.checkbox("🟢 +EV Nuggets Only", value=False)
+        show_pepites_only = st.checkbox("🟢 +EV Value Bets Only", value=False)
 
     # INFOBAR DETAILS
     course_name = str(current_racecard.get('course', 'Ascot')).upper()
@@ -262,122 +189,145 @@ def main():
     if show_pepites_only:
         equity_assets = [a for a in equity_assets if isinstance(a, dict) and a.get("asset_tag") == "VALUE_BUY"]
 
-    # Key KPIs Row
-    k1, k2, k3, k4, k5 = st.columns(5)
-    value_count = sum(1 for a in equity_assets if isinstance(a, dict) and a.get("asset_tag") == "VALUE_BUY")
-    fade_count = sum(1 for a in equity_assets if isinstance(a, dict) and a.get("asset_tag") == "OVERVALUED_FADE")
+    # ---------------------------------------------------------
+    # SECTION 1: TOP EXECUTIVE SUMMARY TABLE
+    # ---------------------------------------------------------
+    st.markdown("<h4 style='color: #0F172A; font-weight: 900; margin-bottom: 8px;'>📋 RACE RUNNERS EXECUTIVE SUMMARY TABLE</h4>", unsafe_allow_html=True)
     
-    total_beyer = sum(safe_int(a.get("beyer_speed"), 100) for a in equity_assets if isinstance(a, dict))
-    avg_beyer = int(total_beyer / max(1, len(equity_assets)))
+    sorted_for_table = sorted(
+        equity_assets,
+        key=lambda a: safe_float(a.get("expected_value_pct") if isinstance(a, dict) else 0.0, default=0.0),
+        reverse=True
+    )
 
-    k1.metric("Runners Pool", len(equity_assets))
-    k2.metric("🟢 +EV Nuggets", value_count)
-    k3.metric("🔴 Overpriced Fades", fade_count)
-    k4.metric("Avg Beyer Speed", avg_beyer)
-    k5.metric("Purse Pool", f"${safe_float(current_racecard.get('prize_money_usd'), 15000.0):,.0f}")
+    summary_rows = []
+    for idx, a in enumerate(sorted_for_table):
+        if not isinstance(a, dict):
+            continue
+        ev_p = safe_float(a.get("expected_value_pct") or (safe_float(a.get("expected_value")) * 100.0), 0.0)
+        tag_lbl = "🟢 TOP VALUE (+EV)" if ev_p > 4.0 else ("🔴 OVERPRICED (-EV)" if ev_p < -5.0 else "🟡 VALUE HEDGE")
+        
+        summary_rows.append({
+            "Rank": f"#{idx+1}",
+            "Horse Name": a.get("horse", "Runner"),
+            "Ticker": a.get("ticker", "$RUNNER"),
+            "Odds": f"{safe_float(a.get('decimal_odds'), 4.0):.2f}",
+            "Expected Profit (EV %)": f"{ev_p:+.1f}%",
+            "Value Index (A/E)": f"{safe_float(a.get('ae_ratio'), 1.0):.2f}",
+            "Speed Power Rating": safe_int(a.get("beyer_speed"), 110),
+            "Rec. Bet Size": f"{safe_float(a.get('kelly_stake_pct'), 0.0):.1f}%",
+            "Seabiscuit Status": tag_lbl
+        })
+
+    st.dataframe(summary_rows, width="stretch", hide_index=True)
 
     st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # MAIN BLOOMBERG TERMINAL STRUCTURED TABS SYSTEM
+    # SECTION 2: RUNNER ASSET CARDS SORTED BY EV % DESCENDING
     # ---------------------------------------------------------
-    t_equities, t_visuals, t_simulators, t_intel = st.tabs([
-        "🏇 RUNNER EQUITIES & ASSETS",
-        "📊 QUANT VISUAL ANALYTICS",
-        "🎰 BET SIMULATORS & BACKTEST",
-        "🤖 AI DOSSIER & STABLE SYNERGY"
-    ])
-
-    # ---------------------------------------------------------
-    # TAB 1: RUNNER EQUITIES & ASSETS
-    # ---------------------------------------------------------
-    with t_equities:
-        selected_ticker = st.session_state.get("selected_horse_ticker")
-        selected_asset = next((a for a in equity_assets if isinstance(a, dict) and a.get("ticker") == selected_ticker), None)
-        if selected_asset:
-            render_horse_detail_view(selected_asset, current_racecard)
-            st.markdown("---")
-
-        render_stock_asset_cards(equity_assets)
-
-    # ---------------------------------------------------------
-    # TAB 2: QUANT VISUAL ANALYTICS (7 CHARTS GRID)
-    # ---------------------------------------------------------
-    with t_visuals:
-        st.markdown("<h4 style='color: #0F172A; font-weight: 900; margin-bottom: 14px;'>📊 ADVANCED QUANT VISUAL ANALYTICS DASHBOARD</h4>", unsafe_allow_html=True)
-        
-        # Row 1: Treemap & Monte Carlo
-        chart_col1, chart_col2 = st.columns(2)
-        with chart_col1:
-            fig_tree = EquineVisualization3D.build_race_market_treemap(equity_assets)
-            st.plotly_chart(fig_tree, width="stretch", config={"responsive": True, "displayModeBar": False})
-
-        with chart_col2:
-            fig_mc = EquineVisualization3D.build_monte_carlo_win_distribution_chart(equity_assets)
-            st.plotly_chart(fig_mc, width="stretch", config={"responsive": True, "displayModeBar": False})
-
-        st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
-
-        # Row 2: EV Scatter Matrix & Furlong Velocity
-        pace_col1, pace_col2 = st.columns(2)
-        with pace_col1:
-            fig_ev = EquineVisualization3D.build_alpha_ev_scatter_matrix(equity_assets)
-            st.plotly_chart(fig_ev, width="stretch", config={"responsive": True, "displayModeBar": False})
-
-        with pace_col2:
-            fig_vel = EquineVisualization3D.build_furlong_velocity_profile_chart(equity_assets)
-            st.plotly_chart(fig_vel, width="stretch", config={"responsive": True, "displayModeBar": False})
-
-        st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
-
-        # Row 3: 3D Terrain & Beyer Speed Progression
-        row4_col1, row4_col2 = st.columns(2)
-        with row4_col1:
-            moisture_val = safe_float(current_racecard.get("moisture_percent"), default=20.0)
-            fig_3d = EquineVisualization3D.build_3d_track_speed_terrain(moisture_val)
-            st.plotly_chart(fig_3d, width="stretch", config={"responsive": True, "displayModeBar": False})
-
-        with row4_col2:
-            fig_beyer = EquineVisualization3D.build_beyer_speed_progression_chart(equity_assets)
-            st.plotly_chart(fig_beyer, width="stretch", config={"responsive": True, "displayModeBar": False})
-
-        st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
-
-        # Row 4: Multi-Runner Trajectory Line
-        fig_traj = EquineVisualization3D.build_multi_runner_trajectory_chart(equity_assets)
-        st.plotly_chart(fig_traj, width="stretch", config={"responsive": True, "displayModeBar": False})
-
-    # ---------------------------------------------------------
-    # TAB 3: BET SIMULATORS & BACKTEST
-    # ---------------------------------------------------------
-    with t_simulators:
-        sim_sub_tab1, sim_sub_tab2 = st.tabs(["🎰 BET COMBINATION SIMULATOR", "📈 SEABISCUIT +EV STRATEGY BACKTEST"])
-        with sim_sub_tab1:
-            render_bet_simulator_view(current_racecard)
-        with sim_sub_tab2:
-            render_backtest_view(all_racecards)
-
-    # ---------------------------------------------------------
-    # TAB 4: AI MARKET INTEL DOSSIER & JOCKEY SYNERGY
-    # ---------------------------------------------------------
-    with t_intel:
-        st.markdown("<h4 style='color: #0F172A; font-weight: 900;'>🤖 DEEPSEEK AI EXECUTIVE INTEL & STABLE SYNERGY</h4>", unsafe_allow_html=True)
-        render_intel_dossier_modal(current_racecard)
-        
+    selected_ticker = st.session_state.get("selected_horse_ticker")
+    selected_asset = next((a for a in equity_assets if isinstance(a, dict) and a.get("ticker") == selected_ticker), None)
+    if selected_asset:
+        render_horse_detail_view(selected_asset, current_racecard)
         st.markdown("---")
-        st.markdown("<h4 style='color: #0F172A; font-weight: 900;'>🤝 JOCKEY x OWNER SYNERGY BREAKDOWN</h4>", unsafe_allow_html=True)
+
+    render_stock_asset_cards(equity_assets)
+
+    st.markdown("---")
+
+    # ---------------------------------------------------------
+    # SECTION 3: BET SIMULATORS & BACKTEST ENGINE
+    # ---------------------------------------------------------
+    t_sim, t_backtest = st.tabs(["🎰 BET COMBINATION SIMULATOR (GAGNANT, COUPLE, TRIO, QUINTE+)", "📈 SEABISCUIT +EV STRATEGY BACKTEST"])
+    with t_sim:
+        render_bet_simulator_view(current_racecard)
+    with t_backtest:
+        render_backtest_view(all_racecards)
+
+    st.markdown("---")
+
+    # ---------------------------------------------------------
+    # SECTION 4: ALL 11 QUANTITATIVE VISUAL ANALYTICS MODELS
+    # ---------------------------------------------------------
+    st.markdown("<h4 style='color: #0F172A; font-weight: 900; margin-bottom: 14px;'>📊 COMPLETE QUANTITATIVE VISUAL ANALYTICS SUITE (ALL 11 MODELS)</h4>", unsafe_allow_html=True)
+
+    # Row 1: Treemap & Finishing Position Probabilities (Model 1 & 10)
+    col1, col2 = st.columns(2)
+    with col1:
+        fig_tree = EquineVisualization3D.build_race_market_treemap(equity_assets)
+        st.plotly_chart(fig_tree, width="stretch", config={"responsive": True, "displayModeBar": False})
+    with col2:
+        fig_pos = EquineVisualization3D.build_finishing_position_stacked_chart(equity_assets)
+        st.plotly_chart(fig_pos, width="stretch", config={"responsive": True, "displayModeBar": False})
+
+    st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
+
+    # Row 2: Monte Carlo 10,000 Sim & Risk/Return Efficient Frontier (Model 3 & 11)
+    col3, col4 = st.columns(2)
+    with col3:
+        fig_mc = EquineVisualization3D.build_monte_carlo_win_distribution_chart(equity_assets)
+        st.plotly_chart(fig_mc, width="stretch", config={"responsive": True, "displayModeBar": False})
+    with col4:
+        fig_rr = EquineVisualization3D.build_risk_return_efficient_frontier_chart(equity_assets)
+        st.plotly_chart(fig_rr, width="stretch", config={"responsive": True, "displayModeBar": False})
+
+    st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
+
+    # Row 3: EV Scatter Matrix & Furlong Velocity Profile (Model 4 & 5)
+    col5, col6 = st.columns(2)
+    with col5:
+        fig_ev = EquineVisualization3D.build_alpha_ev_scatter_matrix(equity_assets)
+        st.plotly_chart(fig_ev, width="stretch", config={"responsive": True, "displayModeBar": False})
+    with col6:
+        fig_vel = EquineVisualization3D.build_furlong_velocity_profile_chart(equity_assets)
+        st.plotly_chart(fig_vel, width="stretch", config={"responsive": True, "displayModeBar": False})
+
+    st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
+
+    # Row 4: 3D Speed Terrain Surface & Beyer Speed Rating Progression (Model 7 & 6)
+    col7, col8 = st.columns(2)
+    with col7:
+        moisture_val = safe_float(current_racecard.get("moisture_percent"), default=20.0)
+        fig_3d = EquineVisualization3D.build_3d_track_speed_terrain(moisture_val)
+        st.plotly_chart(fig_3d, width="stretch", config={"responsive": True, "displayModeBar": False})
+    with col8:
+        fig_beyer = EquineVisualization3D.build_beyer_speed_progression_chart(equity_assets)
+        st.plotly_chart(fig_beyer, width="stretch", config={"responsive": True, "displayModeBar": False})
+
+    st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
+
+    # Row 5: Multi-Runner Price Trajectory Overlay (Model 8)
+    fig_traj = EquineVisualization3D.build_multi_runner_trajectory_chart(equity_assets)
+    st.plotly_chart(fig_traj, width="stretch", config={"responsive": True, "displayModeBar": False})
+
+    st.markdown("---")
+
+    # ---------------------------------------------------------
+    # SECTION 5: DEEPSEEK AI MARKET DOSSIER & STABLE SYNERGY
+    # ---------------------------------------------------------
+    st.markdown("<h4 style='color: #0F172A; font-weight: 900;'>🤖 DEEPSEEK AI EXECUTIVE DOSSIER & STABLE SYNERGY</h4>", unsafe_allow_html=True)
+    
+    intel_col1, intel_col2 = st.columns(2)
+    
+    with intel_col1:
+        st.markdown("<h5 style='color: #4338CA; font-weight: 800;'>🤝 JOCKEY x OWNER SYNERGY BREAKDOWN</h5>", unsafe_allow_html=True)
         try:
             client = TheRacingAPIClient()
             jockey_data = client.get_jockey_owner_analysis()
             owners = jockey_data.get("owners", [])
             
             st.dataframe(
-                [{"Owner / Stable": o.get("owner", "Owner"), "Rides": safe_int(o.get("rides")), "Wins": safe_int(o.get("1st")), "Win Rate": f"{safe_float(o.get('win_%'))*100:.0f}%", "A/E Ratio": safe_float(o.get("a/e")), "1-Unit P/L": f"${safe_float(o.get('1_pl')):+,.2f}"} for o in owners if isinstance(o, dict)],
+                [{"Owner / Stable": o.get("owner", "Owner"), "Rides": safe_int(o.get("rides")), "Wins": safe_int(o.get("1st")), "Win Rate": f"{safe_float(o.get('win_%'))*100:.0f}%", "Value Index (A/E)": safe_float(o.get("a/e")), "1-Unit P/L": f"${safe_float(o.get('1_pl')):+,.2f}"} for o in owners if isinstance(o, dict)],
                 width="stretch",
                 hide_index=True
             )
         except Exception:
             st.info("Jockey & owner synergy data loading.")
+
+    with intel_col2:
+        with st.expander("🤖 GENERATE DEEPSEEK AI EXECUTIVE INTEL DOSSIER", expanded=True):
+            render_intel_dossier_modal(current_racecard)
 
     st.markdown("---")
     st.caption("⚡ **SEABISCUIT SINGLE-PAGE MEGA BLOOMBERG TERMINAL** | Live Racing API Analytics & AI Intelligence.")

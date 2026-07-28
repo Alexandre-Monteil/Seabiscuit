@@ -1,6 +1,6 @@
 """
 SEABISCUIT - 3D & Advanced Plotly Visualizations Engine (Zero Overlap & Hedge Fund Visual Architecture)
-Features 9 distinct, mathematically grounded visual analytics models with zero title/legend collisions.
+Features 11 distinct, mathematically grounded visual analytics models with zero title/legend collisions.
 """
 
 import traceback
@@ -35,11 +35,110 @@ class EquineVisualization3D:
         return fig
 
     @classmethod
+    def build_finishing_position_stacked_chart(cls, equity_assets: List[Dict[str, Any]]) -> go.Figure:
+        """MODEL 10: Finishing Position Probability Distribution (1st, 2nd, 3rd Place Probability)."""
+        if not equity_assets:
+            return cls._create_empty_fig("🏆 Finishing Position Probability Distribution")
+
+        try:
+            valid_assets = [a for a in equity_assets if isinstance(a, dict)]
+            if not valid_assets:
+                return cls._create_empty_fig("🏆 Finishing Position Probability Distribution")
+
+            names = [str(a.get("horse", "Runner")) for a in valid_assets]
+            win_pcts = [safe_float(a.get("win_percent"), default=0.15) * 100.0 for a in valid_assets]
+            place_pcts = [safe_float(a.get("place_percent"), default=0.65) * 100.0 for a in valid_assets]
+            
+            p2_pcts = [round(max(0.0, (p - w) * 0.55), 1) for w, p in zip(win_pcts, place_pcts)]
+            p3_pcts = [round(max(0.0, (p - w) * 0.45), 1) for w, p in zip(win_pcts, place_pcts)]
+            unplaced_pcts = [round(max(0.0, 100.0 - w - p2 - p3), 1) for w, p2, p3 in zip(win_pcts, p2_pcts, p3_pcts)]
+
+            fig = go.Figure()
+
+            fig.add_trace(go.Bar(y=names, x=win_pcts, name="🥇 1st Win Prob %", orientation="h", marker_color="#10B981"))
+            fig.add_trace(go.Bar(y=names, x=p2_pcts, name="🥈 2nd Place Prob %", orientation="h", marker_color="#0284C7"))
+            fig.add_trace(go.Bar(y=names, x=p3_pcts, name="🥉 3rd Show Prob %", orientation="h", marker_color="#F59E0B"))
+            fig.add_trace(go.Bar(y=names, x=unplaced_pcts, name="4th+ Unplaced %", orientation="h", marker_color="#CBD5E1"))
+
+            dynamic_height = max(380, len(valid_assets) * 45)
+
+            fig.update_layout(
+                title=dict(text="🏆 Projected Finishing Position Probabilities (1st, 2nd, 3rd Share)", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
+                paper_bgcolor="#FFFFFF",
+                plot_bgcolor="#FFFFFF",
+                font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
+                height=dynamic_height,
+                barmode="stack",
+                xaxis=dict(title=dict(text="Cumulative Probability Share (%)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                yaxis=dict(gridcolor="#E2E8F0", tickfont=dict(color="#0F172A", size=11)),
+                legend=dict(orientation="h", yanchor="top", y=-0.18, xanchor="center", x=0.5, font=dict(color="#0F172A")),
+                margin=dict(l=140, r=30, b=75, t=75)
+            )
+            return fig
+        except Exception:
+            return cls._create_empty_fig("🏆 Finishing Position Probability Distribution")
+
+    @classmethod
+    def build_risk_return_efficient_frontier_chart(cls, equity_assets: List[Dict[str, Any]]) -> go.Figure:
+        """MODEL 11: Risk vs Expected Return Efficient Frontier Bubble Chart."""
+        if not equity_assets:
+            return cls._create_empty_fig("⚖️ Risk vs Expected Return Efficient Frontier")
+
+        try:
+            valid_assets = [a for a in equity_assets if isinstance(a, dict)]
+            if not valid_assets:
+                return cls._create_empty_fig("⚖️ Risk vs Expected Return Efficient Frontier")
+
+            names = [str(a.get("horse", "Runner")) for a in valid_assets]
+            tickers = [str(a.get("ticker", "$RUNNER")) for a in valid_assets]
+            odds = [safe_float(a.get("decimal_odds"), 4.0) for a in valid_assets]
+            evs = [safe_float(a.get("expected_value_pct") or (safe_float(a.get("expected_value")) * 100.0), 0.0) for a in valid_assets]
+            speeds = [safe_int(a.get("beyer_speed"), 110) for a in valid_assets]
+            tags = [str(a.get("asset_tag"), "MID_TIER_HEDGE") for a in valid_assets]
+
+            # Risk metric = Implied odds volatility / odds variance
+            risks = [round(o * 1.8, 1) for o in odds]
+
+            color_map = {"VALUE_BUY": "#10B981", "OVERVALUED_FADE": "#F43F5E", "MID_TIER_HEDGE": "#F59E0B"}
+            colors = [color_map.get(t, "#F59E0B") for t in tags]
+
+            fig = go.Figure()
+
+            fig.add_hline(y=0, line_dash="dash", line_color="#94A3B8", opacity=0.8, annotation_text="0% EV Threshold", annotation_position="top left")
+
+            fig.add_trace(go.Scatter(
+                x=risks,
+                y=evs,
+                mode="markers+text",
+                text=tickers,
+                textposition="top center",
+                marker=dict(
+                    size=[max(14, min(36, s / 3.8)) for s in speeds],
+                    color=colors,
+                    opacity=0.9,
+                    line=dict(width=2, color="#0F172A")
+                ),
+                hovertemplate="<b>%{customdata[0]} (%{text})</b><br>Risk Variance Index: %{x}<br>Expected Return (EV): %{y:+.1f}%%<br>Speed Rating: %{customdata[1]}<extra></extra>",
+                customdata=list(zip(names, speeds))
+            ))
+
+            fig.update_layout(
+                title=dict(text="⚖️ Risk Variance vs Expected Return (EV %) Efficient Frontier", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
+                paper_bgcolor="#FFFFFF",
+                plot_bgcolor="#FFFFFF",
+                font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
+                height=380,
+                xaxis=dict(title=dict(text="Risk Variance Index (Odds Volatility)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                yaxis=dict(title=dict(text="Expected Return (EV %)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                margin=dict(l=50, r=25, b=50, t=75)
+            )
+            return fig
+        except Exception:
+            return cls._create_empty_fig("⚖️ Risk vs Expected Return Efficient Frontier")
+
+    @classmethod
     def build_backtest_equity_curve_chart(cls, backtest_res: Dict[str, Any]) -> go.Figure:
-        """
-        MODEL 9: Cumulative Bankroll & EV Alpha Backtest Equity Curve Chart.
-        Plots Bankroll Growth ($) over completed races with profit shading.
-        """
+        """MODEL 9: Cumulative Bankroll & EV Alpha Backtest Equity Curve Chart."""
         if not isinstance(backtest_res, dict) or "equity_df" not in backtest_res:
             return cls._create_empty_fig("📈 Cumulative P/L & Bankroll Equity Curve (No Backtest)")
 
@@ -52,10 +151,8 @@ class EquineVisualization3D:
 
             fig = go.Figure()
 
-            # Baseline 1000$ Initial Bankroll Benchmark Line
             fig.add_hline(y=init_b, line_dash="dash", line_color="#94A3B8", opacity=0.8, annotation_text=f"Initial Capital (${init_b:,.0f})", annotation_position="bottom left")
 
-            # Bankroll Equity Curve Line
             fig.add_trace(go.Scatter(
                 x=df["step"],
                 y=df["bankroll"],
@@ -74,8 +171,8 @@ class EquineVisualization3D:
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Execution Trades Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
-                yaxis=dict(title=dict(text="Bankroll Capital ($)", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
+                xaxis=dict(title=dict(text="Execution Trades Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                yaxis=dict(title=dict(text="Bankroll Capital ($)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
                 legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5, font=dict(color="#0F172A")),
                 margin=dict(l=55, r=25, b=80, t=75)
             )
@@ -98,7 +195,7 @@ class EquineVisualization3D:
                 {
                     "Horse": f"{a.get('ticker', '$RUNNER')}<br>{a.get('horse', 'Horse')}",
                     "MarketCap": safe_float(a.get("market_cap_usd"), default=100000.0),
-                    "EV": safe_float(a.get("expected_value"), default=0.0) * 100.0,
+                    "EV": safe_float(a.get("expected_value_pct") or (safe_float(a.get("expected_value")) * 100.0), default=0.0),
                     "Price": f"${safe_float(a.get('share_price_usd'), 20.0):.2f}",
                     "Odds": f"{safe_float(a.get('decimal_odds'), 4.0):.2f}"
                 }
@@ -118,11 +215,11 @@ class EquineVisualization3D:
             fig.update_traces(
                 textinfo="label+value",
                 textfont=dict(size=12, family="JetBrains Mono, sans-serif", color="#FFFFFF"),
-                hovertemplate="<b>%{label}</b><br>Market Cap: $%{-value:,.0f}<br>Expected Value: %{customdata[2]:+.1f}%%<extra></extra>"
+                hovertemplate="<b>%{label}</b><br>Market Cap: $%{-value:,.0f}<br>Expected Return (EV): %{customdata[2]:+.1f}%%<extra></extra>"
             )
 
             fig.update_layout(
-                title=dict(text="🗺️ Race Market Capitalization & Alpha Treemap", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.96),
+                title=dict(text="🗺️ Race Market Capitalization & Value Treemap", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.96),
                 paper_bgcolor="#FFFFFF",
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif"),
@@ -131,7 +228,7 @@ class EquineVisualization3D:
             )
             return fig
         except Exception:
-            return cls._create_empty_fig("🗺️ Race Market Capitalization & Alpha Treemap")
+            return cls._create_empty_fig("🗺️ Race Market Capitalization & Value Treemap")
 
     @classmethod
     def build_equine_ichimoku_cloud_chart(cls, equity_asset: Dict[str, Any]) -> go.Figure:
@@ -182,13 +279,13 @@ class EquineVisualization3D:
             ))
 
             fig.update_layout(
-                title=dict(text=f"☁️ Ichimoku Kinko Hyo Trend Cloud: {ticker} ({horse_name})", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
+                title=dict(text=f"☁️ Ichimoku Trend Cloud: {ticker} ({horse_name})", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
                 paper_bgcolor="#FFFFFF",
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Race History Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
-                yaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
+                xaxis=dict(title=dict(text="Race History Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                yaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
                 legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5, font=dict(color="#0F172A", size=10)),
                 margin=dict(l=45, r=25, b=80, t=75)
             )
@@ -238,26 +335,26 @@ class EquineVisualization3D:
             fig.add_trace(go.Bar(
                 y=labels,
                 x=mkt_win_pcts,
-                name="📊 Market Implied Odds %",
+                name="📊 Bookmaker Implied Win %",
                 orientation="h",
                 marker=dict(color="#64748B", line=dict(color="#334155", width=1.5)),
                 text=[f"{x:.1f}%" for x in mkt_win_pcts],
                 textposition="auto",
                 textfont=dict(color="#FFFFFF", size=11, family="JetBrains Mono"),
                 cliponaxis=False,
-                hovertemplate="<b>%{y}</b><br>Market Implied Share: %{x:.1f}%%<extra></extra>"
+                hovertemplate="<b>%{y}</b><br>Bookmaker Share: %{x:.1f}%%<extra></extra>"
             ))
 
             dynamic_height = max(380, len(valid_assets) * 45)
 
             fig.update_layout(
-                title=dict(text="🔮 Monte Carlo 10,000-Race Sim Victory Share vs Market Implied Odds", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
+                title=dict(text="🔮 Monte Carlo 10,000-Race Victory Share vs Bookmaker Odds", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
                 paper_bgcolor="#FFFFFF",
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=dynamic_height,
                 barmode="group",
-                xaxis=dict(title=dict(text="Probability Share (%)", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
+                xaxis=dict(title=dict(text="Probability Share (%)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
                 yaxis=dict(gridcolor="#E2E8F0", tickfont=dict(color="#0F172A", size=11)),
                 legend=dict(orientation="h", yanchor="top", y=-0.18, xanchor="center", x=0.5, font=dict(color="#0F172A")),
                 margin=dict(l=160, r=50, b=70, t=75)
@@ -270,26 +367,22 @@ class EquineVisualization3D:
     def build_alpha_ev_scatter_matrix(cls, equity_assets: List[Dict[str, Any]]) -> go.Figure:
         """MODEL 4: Alpha Expected Value (EV %) vs Share Price Scatter Matrix."""
         if not equity_assets:
-            return cls._create_empty_fig("🚀 Alpha EV % vs Share Price Matrix (No Assets)")
+            return cls._create_empty_fig("🚀 Expected Return (EV %) vs Share Price Matrix (No Assets)")
 
         try:
             x_prices = [safe_float(a.get("share_price_usd"), default=20.0) for a in equity_assets if isinstance(a, dict)]
-            y_ev = [safe_float(a.get("expected_value"), default=0.0) * 100.0 for a in equity_assets if isinstance(a, dict)]
+            y_ev = [safe_float(a.get("expected_value_pct") or (safe_float(a.get("expected_value")) * 100.0), default=0.0) for a in equity_assets if isinstance(a, dict)]
             names = [str(a.get("horse", "Runner")) for a in equity_assets if isinstance(a, dict)]
             tickers = [str(a.get("ticker", "$RUNNER")) for a in equity_assets if isinstance(a, dict)]
             beyers = [safe_int(a.get("beyer_speed"), default=100) for a in equity_assets if isinstance(a, dict)]
             tags = [str(a.get("asset_tag", "MID_TIER_HEDGE")) for a in equity_assets if isinstance(a, dict)]
 
-            color_map = {
-                "VALUE_BUY": "#10B981",       # Emerald
-                "OVERVALUED_FADE": "#F43F5E", # Rose Crimson
-                "MID_TIER_HEDGE": "#F59E0B"   # Gold
-            }
+            color_map = {"VALUE_BUY": "#10B981", "OVERVALUED_FADE": "#F43F5E", "MID_TIER_HEDGE": "#F59E0B"}
             colors = [color_map.get(t, "#F59E0B") for t in tags]
 
             fig = go.Figure()
 
-            fig.add_hline(y=0, line_dash="dash", line_color="#94A3B8", opacity=0.8, annotation_text="0% Fair EV Threshold", annotation_position="top left")
+            fig.add_hline(y=0, line_dash="dash", line_color="#94A3B8", opacity=0.8, annotation_text="0% Fair Return Threshold", annotation_position="top left")
 
             fig.add_trace(go.Scatter(
                 x=x_prices,
@@ -304,29 +397,29 @@ class EquineVisualization3D:
                     opacity=0.9,
                     line=dict(width=2, color="#0F172A")
                 ),
-                hovertemplate="<b>%{text} (%{customdata[0]})</b><br>Share Price: $%{-x:.2f}<br>Expected Value (EV): %{y:+.1f}%%<br>Beyer Speed: %{customdata[1]}<extra></extra>",
+                hovertemplate="<b>%{text} (%{customdata[0]})</b><br>Share Price: $%{-x:.2f}<br>Expected Return (EV): %{y:+.1f}%%<br>Speed Rating: %{customdata[1]}<extra></extra>",
                 customdata=list(zip(names, beyers))
             ))
 
             fig.update_layout(
-                title=dict(text="🚀 Alpha Expected Value (EV %) vs Share Price Matrix", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
+                title=dict(text="🚀 Expected Return (EV %) vs Share Price Matrix", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
                 paper_bgcolor="#FFFFFF",
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
-                yaxis=dict(title=dict(text="Expected Value (EV %)", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
+                xaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                yaxis=dict(title=dict(text="Expected Return (EV %)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
                 margin=dict(l=45, r=25, b=45, t=75)
             )
             return fig
         except Exception:
-            return cls._create_empty_fig("🚀 Alpha EV % vs Share Price Matrix")
+            return cls._create_empty_fig("🚀 Expected Return (EV %) vs Share Price Matrix")
 
     @classmethod
     def build_furlong_velocity_profile_chart(cls, equity_assets: List[Dict[str, Any]]) -> go.Figure:
         """MODEL 5: Furlong Pace Velocity & Acceleration Profile."""
         if not equity_assets:
-            return cls._create_empty_fig("🏎️ Pace & Turn of Foot Profile (No Assets)")
+            return cls._create_empty_fig("🏎️ Pace & Turn of Foot Speed Profile (No Assets)")
 
         try:
             furlongs = [f"Furlong {i}" for i in range(1, 9)]
@@ -361,25 +454,25 @@ class EquineVisualization3D:
                 ))
 
             fig.update_layout(
-                title=dict(text="🏎️ Furlong Velocity & Turn of Foot Profile (Speed vs Furlong)", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
+                title=dict(text="🏎️ Furlong Speed & Turn of Foot Profile (Speed vs Furlong)", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
                 paper_bgcolor="#FFFFFF",
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Race Distance Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
-                yaxis=dict(title=dict(text="Sustained Speed (mph)", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
+                xaxis=dict(title=dict(text="Race Distance Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                yaxis=dict(title=dict(text="Sustained Speed (mph)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
                 legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5, font=dict(color="#0F172A", size=10)),
                 margin=dict(l=45, r=25, b=80, t=75)
             )
             return fig
         except Exception:
-            return cls._create_empty_fig("🏎️ Furlong Velocity & Turn of Foot Profile")
+            return cls._create_empty_fig("🏎️ Furlong Speed & Turn of Foot Profile")
 
     @classmethod
     def build_beyer_speed_progression_chart(cls, equity_assets: List[Dict[str, Any]]) -> go.Figure:
         """MODEL 6: Multi-Runner Beyer Speed Rating Progression."""
         if not equity_assets:
-            return cls._create_empty_fig("⚡ Beyer Speed Rating Progression (No Data)")
+            return cls._create_empty_fig("⚡ Speed Power Rating History (No Data)")
 
         try:
             races_labels = ["Race -4", "Race -3", "Race -2", "Previous", "Target"]
@@ -405,19 +498,19 @@ class EquineVisualization3D:
                 ))
 
             fig.update_layout(
-                title=dict(text="⚡ Beyer Speed Rating Progression (Past 5 Races)", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
+                title=dict(text="⚡ Speed Power Rating Progression (Past 5 Races)", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
                 paper_bgcolor="#FFFFFF",
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
-                yaxis=dict(title=dict(text="Beyer Speed Rating", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
+                xaxis=dict(gridcolor="#E2E8F0"),
+                yaxis=dict(title=dict(text="Speed Power Rating", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
                 legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5, font=dict(color="#0F172A", size=10)),
                 margin=dict(l=45, r=25, b=80, t=75)
             )
             return fig
         except Exception:
-            return cls._create_empty_fig("⚡ Beyer Speed Rating Progression")
+            return cls._create_empty_fig("⚡ Speed Power Rating Progression")
 
     @classmethod
     def build_3d_track_speed_terrain(cls, moisture_pct: float = 20.0) -> go.Figure:
@@ -435,7 +528,7 @@ class EquineVisualization3D:
                 x=D, y=M, z=Z,
                 colorscale="Viridis",
                 showscale=False,
-                hovertemplate="Distance: %{x:.1f}f<br>Moisture: %{y:.1f}%%<br>Beyer Speed: %{z:.1f}<extra></extra>"
+                hovertemplate="Distance: %{x:.1f}f<br>Moisture: %{y:.1f}%%<br>Speed Rating: %{z:.1f}<extra></extra>"
             )])
 
             fig.add_trace(go.Scatter3d(
@@ -447,33 +540,33 @@ class EquineVisualization3D:
             ))
 
             fig.update_layout(
-                title=dict(text="🏁 3D Track Speed & Moisture Surface Mesh", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
+                title=dict(text="🏁 3D Track Speed & Ground Moisture Surface Terrain", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
                 paper_bgcolor="#FFFFFF",
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif"),
                 height=380,
                 scene=dict(
-                    xaxis=dict(title="Dist (f)", backgroundcolor="#FFFFFF", gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
-                    yaxis=dict(title="Moisture (%)", backgroundcolor="#FFFFFF", gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
-                    zaxis=dict(title="Beyer Speed", backgroundcolor="#FFFFFF", gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
+                    xaxis=dict(title="Dist (f)", backgroundcolor="#FFFFFF", gridcolor="#E2E8F0"),
+                    yaxis=dict(title="Moisture (%)", backgroundcolor="#FFFFFF", gridcolor="#E2E8F0"),
+                    zaxis=dict(title="Speed Rating", backgroundcolor="#FFFFFF", gridcolor="#E2E8F0"),
                     camera=dict(eye=dict(x=1.3, y=1.3, z=1.1))
                 ),
                 margin=dict(l=15, r=15, b=15, t=75)
             )
             return fig
         except Exception:
-            return cls._create_empty_fig("🏁 3D Track Speed & Moisture Surface Mesh")
+            return cls._create_empty_fig("🏁 3D Track Speed & Ground Moisture Surface Terrain")
 
     @classmethod
     def build_multi_runner_trajectory_chart(cls, equity_assets: List[Dict[str, Any]]) -> go.Figure:
         """MODEL 8: Multi-Runner Equity Price Trajectory."""
         if not equity_assets:
-            return cls._create_empty_fig("📈 Multi-Runner Price Trajectory (No Active Assets)")
+            return cls._create_empty_fig("📈 Share Price History Trajectory (No Active Assets)")
 
         try:
             df_multi = EquineTimeSeriesEngine.compute_multi_runner_time_series(equity_assets, num_races=10)
             if df_multi is None or df_multi.empty or "date" not in df_multi.columns:
-                return cls._create_empty_fig("📈 Multi-Runner Price Trajectory (No Time Series)")
+                return cls._create_empty_fig("📈 Share Price History Trajectory (No Time Series)")
             
             colors = ["#10B981", "#0284C7", "#F43F5E", "#D97706", "#8B5CF6", "#EC4899", "#EA580C"]
             fig = go.Figure()
@@ -496,28 +589,28 @@ class EquineVisualization3D:
                     ))
 
             fig.update_layout(
-                title=dict(text="📈 Multi-Runner Equity Price Trajectory (Career Overlay)", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
+                title=dict(text="📈 Runner Share Price Career Trajectory Overlay", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
                 paper_bgcolor="#FFFFFF",
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Career Race Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
-                yaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#E2E8F0", tickfont=dict(color="#0F172A")),
+                xaxis=dict(title=dict(text="Career Race Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                yaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
                 legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5, font=dict(color="#0F172A", size=10)),
                 margin=dict(l=45, r=25, b=80, t=75)
             )
             return fig
         except Exception:
-            return cls._create_empty_fig("📈 Multi-Runner Price Trajectory")
+            return cls._create_empty_fig("📈 Share Price History Trajectory")
 
     @classmethod
     def build_6d_equine_quant_radar(cls, asset: Dict[str, Any]) -> go.Figure:
         """Generates 6D Equine Quant Radar plot safely."""
         if not isinstance(asset, dict):
-            return cls._create_empty_fig("🎯 6D Quant Radar")
+            return cls._create_empty_fig("🎯 6D Performance Radar")
 
         try:
-            metrics = ["Speed Rating", "Form Momentum", "A/E Value", "Moisture Fit", "Trainer Class", "Liquidity Depth"]
+            metrics = ["Speed Rating", "Form Momentum", "Value Index (A/E)", "Moisture Fit", "Trainer Skill", "Market Depth"]
             
             beyer_score = min(100.0, (safe_float(asset.get("beyer_speed"), 100) / 130.0) * 100.0)
             ae_score = min(100.0, (safe_float(asset.get("ae_ratio"), 1.0) / 1.5) * 100.0)
@@ -554,10 +647,10 @@ class EquineVisualization3D:
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif"),
                 height=350,
-                title=dict(text=f"🎯 6D Quant Radar: {asset.get('horse', 'Runner')}", font=dict(color="#0F172A", size=14), x=0.01, y=0.97),
+                title=dict(text=f"🎯 Performance Radar: {asset.get('horse', 'Runner')}", font=dict(color="#0F172A", size=14), x=0.01, y=0.97),
                 showlegend=False,
                 margin=dict(l=30, r=30, b=30, t=70)
             )
             return fig
         except Exception:
-            return cls._create_empty_fig("🎯 6D Quant Radar")
+            return cls._create_empty_fig("🎯 Performance Radar")
