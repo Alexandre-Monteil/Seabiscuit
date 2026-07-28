@@ -76,7 +76,7 @@ def format_race_distance(distance_raw: Any, furlongs: Optional[float] = None) ->
         f_str = f"{furlongs:.1f}f"
         lbl_str = f"{furlongs:.1f} Furlongs"
 
-    return f"{f_str} ({lbl_str} — {meters:,}m / {yards:,} yds)"
+    return f"{f_str} ({lbl_str} - {meters:,}m / {yards:,} yds)"
 
 
 def get_race_weather_info(racecard: Dict[str, Any]) -> str:
@@ -85,19 +85,19 @@ def get_race_weather_info(racecard: Dict[str, Any]) -> str:
     moisture = safe_float(racecard.get("moisture_percent"), default=18.5)
     
     if "soft" in going or "heavy" in going or moisture > 30.0:
-        weather_icon = "🌧️ Light Rain"
+        weather_icon = "Rain"
         temp_c = 16
         wind_kmh = 18
     elif "firm" in going or moisture < 15.0:
-        weather_icon = "☀️ Clear Sun"
+        weather_icon = "Clear Sun"
         temp_c = 24
         wind_kmh = 9
     else:
-        weather_icon = "⛅ Mild Clouds"
+        weather_icon = "Mild Clouds"
         temp_c = 21
         wind_kmh = 12
 
-    return f"{weather_icon} | 🌡️ {temp_c}°C | 🌬️ {wind_kmh} km/h Wind | 💧 Ground Moisture: {moisture:.1f}%"
+    return f"[{weather_icon}] | {temp_c}C | {wind_kmh} km/h Wind | Ground Moisture: {moisture:.1f}%"
 
 
 def parse_race_datetime(racecard: Dict[str, Any]) -> datetime:
