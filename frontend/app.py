@@ -143,22 +143,16 @@ st.markdown("""
 
 @st.cache_data(ttl=120, show_spinner=False)
 def fetch_race_data():
-    """Fetches and caches live racecard data across multi-day J+7 horizon from The Racing API safely."""
+    """Fetches and caches live racecard data across 15-day J-7 to J+7 horizon from The Racing API safely."""
     try:
         client = TheRacingAPIClient()
-        raw_racecards = client.get_upcoming_racecards(days_ahead=7)
+        raw_racecards = client.get_upcoming_racecards(past_days=7, future_days=7)
         if not raw_racecards:
             return []
         processed = [EquineStockEngine.process_racecard(rc) for rc in raw_racecards if isinstance(rc, dict)]
         
-        now = datetime.now()
-        upcoming = [rc for rc in processed if parse_race_datetime(rc) >= now]
-        past = [rc for rc in processed if parse_race_datetime(rc) < now]
-        
-        upcoming_sorted = sorted(upcoming, key=parse_race_datetime)
-        past_sorted = sorted(past, key=parse_race_datetime, reverse=True)
-        
-        return upcoming_sorted + past_sorted
+        # Sort all racecards strictly chronologically by exact race datetime
+        return sorted(processed, key=parse_race_datetime)
     except Exception:
         return []
 
@@ -173,27 +167,38 @@ def main():
 
     now = datetime.now()
 
-    # MULTI-DAY J+7 DATE FILTER BAR
+    # MULTI-DAY J-7 TO J+7 DATE FILTER BAR
     dates_map = {}
     for rc in all_racecards:
-        d_key = str(rc.get("race_date", "2026-07-24"))
+        d_key = str(rc.get("race_date", "2026-07-28"))
         d_lbl = str(rc.get("race_date_display", d_key))
         dates_map[d_lbl] = d_key
 
-    date_options = ["📅 All Horizon Dates (J+7)"] + list(dates_map.keys())
+    date_options = ["📅 All Horizon Dates (J-7 to J+7)"] + list(dates_map.keys())
     
     date_col, race_col, filter_col = st.columns([1.5, 3.5, 1])
     
     with date_col:
         selected_date_lbl = st.selectbox("Date Filter:", date_options, label_visibility="collapsed")
         
-    if selected_date_lbl != "📅 All Horizon Dates (J+7)":
+    if selected_date_lbl != "📅 All Horizon Dates (J-7 to J+7)":
         target_date = dates_map.get(selected_date_lbl)
         active_racecards = [rc for rc in all_racecards if str(rc.get("race_date")) == target_date]
         if not active_racecards:
             active_racecards = all_racecards
     else:
         active_racecards = all_racecards
+
+    # Determine default index: NEXT UPCOMING RACE closest in future to current time
+    default_idx = 0
+    min_future_diff = float("inf")
+    
+    for idx, rc in enumerate(active_racecards):
+        rc_dt = parse_race_datetime(rc)
+        diff_sec = (rc_dt - now).total_seconds()
+        if diff_sec >= -300 and diff_sec < min_future_diff:
+            min_future_diff = diff_sec
+            default_idx = idx
 
     # Build Race Selector Labels with Live/Upcoming vs Finished Status Badges
     race_options = []
@@ -204,9 +209,15 @@ def main():
         race_options.append(f"{status_tag} | {rc.get('course', 'Track')} — {rc.get('race_name', 'Stakes')} ({rc.get('race_date_display', '')} @ {rc.get('post_time', '15:00')})")
 
     with race_col:
-        selected_idx = st.selectbox("Race Event Selector:", range(len(race_options)), format_func=lambda i: race_options[i], label_visibility="collapsed")
+        selected_idx = st.selectbox(
+            "Race Event Selector:",
+            range(len(race_options)),
+            index=default_idx,
+            format_func=lambda i: race_options[i],
+            label_visibility="collapsed"
+        )
         if selected_idx >= len(active_racecards):
-            selected_idx = 0
+            selected_idx = default_idx
         current_racecard = active_racecards[selected_idx]
 
     with filter_col:
