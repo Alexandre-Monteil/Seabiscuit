@@ -208,26 +208,67 @@ def main():
         reverse=True
     )
 
-    summary_rows = []
+    table_html = """
+    <div style="overflow-x: auto; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; margin-bottom: 16px;">
+    <table style="width: 100%; border-collapse: collapse; background-color: #FFFFFF; font-family: 'Outfit', sans-serif;">
+        <thead>
+            <tr style="background: linear-gradient(90deg, #F8FAFC 0%, #F1F5F9 100%); border-bottom: 2px solid #CBD5E1; text-align: left; color: #475569; font-size: 0.85rem; text-transform: uppercase;">
+                <th style="padding: 14px 16px; font-weight: 800;">Rank</th>
+                <th style="padding: 14px 16px; font-weight: 800;">Runner (Ticker)</th>
+                <th style="padding: 14px 16px; font-weight: 800; text-align: right;">Odds</th>
+                <th style="padding: 14px 16px; font-weight: 800; text-align: right;">Exp. Profit (EV %)</th>
+                <th style="padding: 14px 16px; font-weight: 800; text-align: center;">Value Index</th>
+                <th style="padding: 14px 16px; font-weight: 800; text-align: center;">Speed Rtg</th>
+                <th style="padding: 14px 16px; font-weight: 800; text-align: center;">Rec. Stake</th>
+                <th style="padding: 14px 16px; font-weight: 800; text-align: center;">Seabiscuit Status</th>
+            </tr>
+        </thead>
+        <tbody>
+    """
+
     for idx, a in enumerate(sorted_for_table):
         if not isinstance(a, dict):
             continue
         ev_p = safe_float(a.get("expected_value_pct") or (safe_float(a.get("expected_value")) * 100.0), 0.0)
-        tag_lbl = "🟢 TOP VALUE (+EV)" if ev_p > 4.0 else ("🔴 OVERPRICED (-EV)" if ev_p < -5.0 else "🟡 VALUE HEDGE")
         
-        summary_rows.append({
-            "Rank": f"#{idx+1}",
-            "Horse Name": a.get("horse", "Runner"),
-            "Ticker": a.get("ticker", "$RUNNER"),
-            "Odds": f"{safe_float(a.get('decimal_odds'), 4.0):.2f}",
-            "Expected Profit (EV %)": f"{ev_p:+.1f}%",
-            "Value Index (A/E)": f"{safe_float(a.get('ae_ratio'), 1.0):.2f}",
-            "Speed Power Rating": safe_int(a.get("beyer_speed"), 110),
-            "Rec. Bet Size": f"{safe_float(a.get('kelly_stake_pct'), 0.0):.1f}%",
-            "Seabiscuit Status": tag_lbl
-        })
+        if ev_p > 4.0:
+            status_html = "<span style='background: #10B981; color: #FFFFFF; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.75rem;'>🟢 TOP VALUE (+EV)</span>"
+            ev_bg = "background: rgba(16, 185, 129, 0.1);"
+            ev_color = "#059669"
+        elif ev_p < -5.0:
+            status_html = "<span style='background: #F43F5E; color: #FFFFFF; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.75rem;'>🔴 OVERPRICED (-EV)</span>"
+            ev_bg = "background: rgba(244, 63, 94, 0.1);"
+            ev_color = "#E11D48"
+        else:
+            status_html = "<span style='background: #F59E0B; color: #FFFFFF; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.75rem;'>🟡 VALUE HEDGE</span>"
+            ev_bg = ""
+            ev_color = "#0F172A"
 
-    st.dataframe(summary_rows, width="stretch", hide_index=True)
+        row_bg = "#FFFFFF" if idx % 2 == 0 else "#F8FAFC"
+        
+        table_html += f"""
+            <tr style="background-color: {row_bg}; border-bottom: 1px solid #E2E8F0; transition: background-color 0.2s ease;">
+                <td style="padding: 14px 16px; font-weight: 900; color: #94A3B8;">#{idx+1}</td>
+                <td style="padding: 14px 16px;">
+                    <div style="font-weight: 800; color: #0F172A; font-size: 1.05rem;">{a.get('horse', 'Runner')}</div>
+                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #64748B;">{a.get('ticker', '$RUNNER')}</div>
+                </td>
+                <td style="padding: 14px 16px; font-weight: 800; color: #0284C7; font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; text-align: right;">{safe_float(a.get('decimal_odds'), 4.0):.2f}</td>
+                <td style="padding: 14px 16px; font-weight: 900; color: {ev_color}; {ev_bg} text-align: right; font-family: 'JetBrains Mono', monospace;">{ev_p:+.1f}%</td>
+                <td style="padding: 14px 16px; font-weight: 700; text-align: center; font-family: 'JetBrains Mono', monospace;">{safe_float(a.get('ae_ratio'), 1.0):.2f}</td>
+                <td style="padding: 14px 16px; font-weight: 900; color: #4338CA; text-align: center;">{safe_int(a.get('beyer_speed'), 110)}</td>
+                <td style="padding: 14px 16px; font-weight: 800; color: #047857; text-align: center;">{safe_float(a.get('kelly_stake_pct'), 0.0):.1f}%</td>
+                <td style="padding: 14px 16px; text-align: center;">{status_html}</td>
+            </tr>
+        """
+        
+    table_html += """
+        </tbody>
+    </table>
+    </div>
+    """
+
+    st.markdown(table_html, unsafe_allow_html=True)
 
     st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 

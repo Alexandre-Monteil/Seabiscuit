@@ -73,8 +73,8 @@ class EquineVisualization3D:
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=max(360, len(valid_assets) * 45),
-                xaxis=dict(gridcolor="#E2E8F0"),
-                yaxis=dict(gridcolor="#E2E8F0"),
+                xaxis=dict(gridcolor="#F1F5F9", showline=False, zeroline=False),
+                yaxis=dict(gridcolor="#F1F5F9", showline=False, zeroline=False),
                 margin=dict(l=140, r=25, b=50, t=75)
             )
             return fig
@@ -102,10 +102,10 @@ class EquineVisualization3D:
 
             fig = go.Figure()
 
-            fig.add_trace(go.Bar(y=names, x=win_pcts, name="🥇 1st Win Prob %", orientation="h", marker_color="#10B981"))
-            fig.add_trace(go.Bar(y=names, x=p2_pcts, name="🥈 2nd Place Prob %", orientation="h", marker_color="#0284C7"))
-            fig.add_trace(go.Bar(y=names, x=p3_pcts, name="🥉 3rd Show Prob %", orientation="h", marker_color="#F59E0B"))
-            fig.add_trace(go.Bar(y=names, x=unplaced_pcts, name="4th+ Unplaced %", orientation="h", marker_color="#CBD5E1"))
+            fig.add_trace(go.Bar(y=names, x=win_pcts, name="🥇 1st Win Prob %", orientation="h", marker=dict(color="#10B981", line=dict(color="#047857", width=1.5))))
+            fig.add_trace(go.Bar(y=names, x=p2_pcts, name="🥈 2nd Place Prob %", orientation="h", marker=dict(color="#3B82F6", line=dict(color="#1D4ED8", width=1.5))))
+            fig.add_trace(go.Bar(y=names, x=p3_pcts, name="🥉 3rd Show Prob %", orientation="h", marker=dict(color="#F59E0B", line=dict(color="#B45309", width=1.5))))
+            fig.add_trace(go.Bar(y=names, x=unplaced_pcts, name="4th+ Unplaced %", orientation="h", marker=dict(color="#E2E8F0", line=dict(color="#CBD5E1", width=1))))
 
             dynamic_height = max(380, len(valid_assets) * 45)
 
@@ -116,8 +116,8 @@ class EquineVisualization3D:
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=dynamic_height,
                 barmode="stack",
-                xaxis=dict(title=dict(text="Cumulative Probability Share (%)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
-                yaxis=dict(gridcolor="#E2E8F0", tickfont=dict(color="#0F172A", size=11)),
+                xaxis=dict(title=dict(text="Cumulative Probability Share (%)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
+                yaxis=dict(gridcolor="#F1F5F9", tickfont=dict(color="#0F172A", size=11), zeroline=False),
                 legend=dict(orientation="h", yanchor="top", y=-0.18, xanchor="center", x=0.5, font=dict(color="#0F172A")),
                 margin=dict(l=140, r=30, b=75, t=75)
             )
@@ -159,10 +159,10 @@ class EquineVisualization3D:
                 text=tickers,
                 textposition="top center",
                 marker=dict(
-                    size=[max(14, min(36, s / 3.8)) for s in speeds],
+                    size=[max(16, min(40, s / 3.5)) for s in speeds],
                     color=colors,
-                    opacity=0.9,
-                    line=dict(width=2, color="#0F172A")
+                    opacity=0.85,
+                    line=dict(width=2.5, color="#0F172A")
                 ),
                 hovertemplate="<b>%{customdata[0]} (%{text})</b><br>Risk Index: %{x}<br>Expected Profit (EV): %{y:+.1f}%%<br>Speed Rating: %{customdata[1]}<extra></extra>",
                 customdata=list(zip(names, speeds))
@@ -174,8 +174,8 @@ class EquineVisualization3D:
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Risk Variance Index (Odds Volatility)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
-                yaxis=dict(title=dict(text="Expected Profit (EV %)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                xaxis=dict(title=dict(text="Risk Variance Index (Odds Volatility)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
+                yaxis=dict(title=dict(text="Expected Profit (EV %)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
                 margin=dict(l=50, r=25, b=50, t=75)
             )
             return fig
@@ -204,9 +204,9 @@ class EquineVisualization3D:
                 y=df["bankroll"],
                 mode="lines+markers",
                 name="📈 Seabiscuit +EV Alpha Strategy",
-                line=dict(color="#10B981", width=3.5),
-                marker=dict(size=6, color="#047857"),
-                fill="tonexty",
+                line=dict(color="#10B981", width=4, shape="spline"),
+                marker=dict(size=8, color="#047857", line=dict(width=2, color="#FFFFFF")),
+                fill="tozeroy",
                 fillcolor="rgba(16, 185, 129, 0.12)",
                 hovertemplate="<b>%{x}</b><br>Cumulative Bankroll: $%{-y:,.2f}<extra></extra>"
             ))
@@ -217,8 +217,8 @@ class EquineVisualization3D:
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Execution Trades Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
-                yaxis=dict(title=dict(text="Bankroll Capital ($)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                xaxis=dict(title=dict(text="Execution Trades Horizon", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
+                yaxis=dict(title=dict(text="Bankroll Capital ($)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
                 legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5, font=dict(color="#0F172A")),
                 margin=dict(l=55, r=25, b=80, t=75)
             )
@@ -253,14 +253,14 @@ class EquineVisualization3D:
                 path=["Horse"],
                 values="MarketCap",
                 color="EV",
-                color_continuous_scale=[(0.0, "#F43F5E"), (0.5, "#F59E0B"), (1.0, "#10B981")],
+                color_continuous_scale=[(0.0, "#E11D48"), (0.5, "#F59E0B"), (1.0, "#10B981")],
                 color_continuous_midpoint=0.0,
                 hover_data=["Price", "Odds", "EV"]
             )
 
             fig.update_traces(
                 textinfo="label+value",
-                textfont=dict(size=12, family="JetBrains Mono, sans-serif", color="#FFFFFF"),
+                textfont=dict(size=14, family="JetBrains Mono, sans-serif", color="#FFFFFF"),
                 hovertemplate="<b>%{label}</b><br>Market Cap: $%{-value:,.0f}<br>Expected Return (EV): %{customdata[2]:+.1f}%%<extra></extra>"
             )
 
@@ -320,8 +320,8 @@ class EquineVisualization3D:
             fig.add_trace(go.Scatter(
                 x=df_ichi["date"], y=df_ichi["close"],
                 mode="lines+markers", name=f"{ticker} Share Price ($)",
-                line=dict(color="#0F172A", width=3),
-                marker=dict(size=6, color="#4338CA")
+                line=dict(color="#0F172A", width=3, shape="spline"),
+                marker=dict(size=8, color="#4338CA", line=dict(width=2, color="#FFFFFF"))
             ))
 
             fig.update_layout(
@@ -330,8 +330,8 @@ class EquineVisualization3D:
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Race History Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
-                yaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                xaxis=dict(title=dict(text="Race History Horizon", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
+                yaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
                 legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5, font=dict(color="#0F172A", size=10)),
                 margin=dict(l=45, r=25, b=80, t=75)
             )
@@ -400,8 +400,8 @@ class EquineVisualization3D:
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=dynamic_height,
                 barmode="group",
-                xaxis=dict(title=dict(text="Probability Share (%)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
-                yaxis=dict(gridcolor="#E2E8F0", tickfont=dict(color="#0F172A", size=11)),
+                xaxis=dict(title=dict(text="Probability Share (%)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
+                yaxis=dict(gridcolor="#F1F5F9", tickfont=dict(color="#0F172A", size=11), zeroline=False),
                 legend=dict(orientation="h", yanchor="top", y=-0.18, xanchor="center", x=0.5, font=dict(color="#0F172A")),
                 margin=dict(l=160, r=50, b=70, t=75)
             )
@@ -438,10 +438,10 @@ class EquineVisualization3D:
                 textposition="top center",
                 textfont=dict(color="#0F172A", size=11, family="JetBrains Mono"),
                 marker=dict(
-                    size=[max(14, min(36, b / 4.0)) for b in beyers],
+                    size=[max(16, min(40, b / 3.5)) for b in beyers],
                     color=colors,
-                    opacity=0.9,
-                    line=dict(width=2, color="#0F172A")
+                    opacity=0.85,
+                    line=dict(width=2.5, color="#0F172A")
                 ),
                 hovertemplate="<b>%{text} (%{customdata[0]})</b><br>Share Price: $%{-x:.2f}<br>Expected Return (EV): %{y:+.1f}%%<br>Speed Rating: %{customdata[1]}<extra></extra>",
                 customdata=list(zip(names, beyers))
@@ -453,8 +453,8 @@ class EquineVisualization3D:
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
-                yaxis=dict(title=dict(text="Expected Return (EV %)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                xaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
+                yaxis=dict(title=dict(text="Expected Return (EV %)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
                 margin=dict(l=45, r=25, b=45, t=75)
             )
             return fig
@@ -494,8 +494,8 @@ class EquineVisualization3D:
                     y=[round(v, 1) for v in velocity_curve],
                     mode="lines+markers",
                     name=f"{ticker} ({horse_name})",
-                    line=dict(width=3, color=colors[idx % len(colors)]),
-                    marker=dict(size=7),
+                    line=dict(width=3.5, color=colors[idx % len(colors)], shape="spline"),
+                    marker=dict(size=8, line=dict(width=2, color="#FFFFFF")),
                     hovertemplate=f"<b>{horse_name} ({ticker})</b><br>%{{x}}: %{{y}} mph<extra></extra>"
                 ))
 
@@ -505,8 +505,8 @@ class EquineVisualization3D:
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Race Distance Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
-                yaxis=dict(title=dict(text="Sustained Speed (mph)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                xaxis=dict(title=dict(text="Race Distance Horizon", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
+                yaxis=dict(title=dict(text="Sustained Speed (mph)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
                 legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5, font=dict(color="#0F172A", size=10)),
                 margin=dict(l=45, r=25, b=80, t=75)
             )
@@ -539,8 +539,8 @@ class EquineVisualization3D:
                     y=beyer_series,
                     mode="lines+markers",
                     name=str(asset.get("ticker", "$RUNNER")),
-                    line=dict(width=3, color=colors[idx % len(colors)]),
-                    marker=dict(size=7)
+                    line=dict(width=3.5, color=colors[idx % len(colors)], shape="spline"),
+                    marker=dict(size=8, line=dict(width=2, color="#FFFFFF"))
                 ))
 
             fig.update_layout(
@@ -549,8 +549,8 @@ class EquineVisualization3D:
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(gridcolor="#E2E8F0"),
-                yaxis=dict(title=dict(text="Speed Power Rating", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                xaxis=dict(gridcolor="#F1F5F9", zeroline=False),
+                yaxis=dict(title=dict(text="Speed Power Rating", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
                 legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5, font=dict(color="#0F172A", size=10)),
                 margin=dict(l=45, r=25, b=80, t=75)
             )
@@ -572,8 +572,9 @@ class EquineVisualization3D:
 
             fig = go.Figure(data=[go.Surface(
                 x=D, y=M, z=Z,
-                colorscale="Viridis",
+                colorscale="Plasma",
                 showscale=False,
+                lighting=dict(ambient=0.7, diffuse=0.9, specular=0.8, roughness=0.1),
                 hovertemplate="Distance: %{x:.1f}f<br>Moisture: %{y:.1f}%%<br>Speed Rating: %{z:.1f}<extra></extra>"
             )])
 
@@ -592,9 +593,9 @@ class EquineVisualization3D:
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif"),
                 height=380,
                 scene=dict(
-                    xaxis=dict(title="Dist (f)", backgroundcolor="#FFFFFF", gridcolor="#E2E8F0"),
-                    yaxis=dict(title="Moisture (%)", backgroundcolor="#FFFFFF", gridcolor="#E2E8F0"),
-                    zaxis=dict(title="Speed Rating", backgroundcolor="#FFFFFF", gridcolor="#E2E8F0"),
+                    xaxis=dict(title="Dist (f)", backgroundcolor="#F8FAFC", gridcolor="#E2E8F0", showbackground=True),
+                    yaxis=dict(title="Moisture (%)", backgroundcolor="#F8FAFC", gridcolor="#E2E8F0", showbackground=True),
+                    zaxis=dict(title="Speed Rating", backgroundcolor="#F8FAFC", gridcolor="#E2E8F0", showbackground=True),
                     camera=dict(eye=dict(x=1.3, y=1.3, z=1.1))
                 ),
                 margin=dict(l=15, r=15, b=15, t=75)
@@ -629,8 +630,8 @@ class EquineVisualization3D:
                         y=df_multi[ticker],
                         mode="lines+markers",
                         name=f"{ticker} ({horse_name})",
-                        line=dict(width=3, color=colors[idx % len(colors)]),
-                        marker=dict(size=7),
+                        line=dict(width=3.5, color=colors[idx % len(colors)], shape="spline"),
+                        marker=dict(size=8, line=dict(width=2, color="#FFFFFF")),
                         hovertemplate=f"<b>{horse_name} ({ticker})</b><br>Date: %{{x}}<br>Share Price: $%{{y:.2f}}<extra></extra>"
                     ))
 
@@ -640,8 +641,8 @@ class EquineVisualization3D:
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
                 height=380,
-                xaxis=dict(title=dict(text="Career Race Horizon", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
-                yaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#E2E8F0"),
+                xaxis=dict(title=dict(text="Career Race Horizon", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
+                yaxis=dict(title=dict(text="Share Price ($/share)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
                 legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5, font=dict(color="#0F172A", size=10)),
                 margin=dict(l=45, r=25, b=80, t=75)
             )
@@ -679,14 +680,14 @@ class EquineVisualization3D:
 
             fig.add_trace(go.Scatterpolar(
                 r=values_closed, theta=metrics_closed, fill="toself",
-                fillcolor="rgba(67, 56, 202, 0.18)",
-                line=dict(color="#4338CA", width=3), name=str(asset.get("ticker", "$EQUITY"))
+                fillcolor="rgba(16, 185, 129, 0.25)",
+                line=dict(color="#10B981", width=3.5), name=str(asset.get("ticker", "$EQUITY"))
             ))
 
             fig.update_layout(
                 polar=dict(
-                    radialaxis=dict(visible=True, range=[0, 100], gridcolor="#E2E8F0", color="#64748B"),
-                    angularaxis=dict(gridcolor="#E2E8F0", color="#0F172A"),
+                    radialaxis=dict(visible=True, range=[0, 100], gridcolor="#E2E8F0", color="#64748B", showline=False),
+                    angularaxis=dict(gridcolor="#E2E8F0", color="#0F172A", showline=False),
                     bgcolor="#FFFFFF"
                 ),
                 paper_bgcolor="#FFFFFF",

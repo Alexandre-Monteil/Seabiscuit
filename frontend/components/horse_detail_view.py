@@ -18,12 +18,19 @@ def render_horse_detail_view(asset: Dict[str, Any], racecard: Dict[str, Any]) ->
 
     with d_col1:
         st.markdown(f"""
-        <h3 style="color: #0F172A; font-weight: 900; margin: 0;">
-            🏇 {asset.get('horse')} <span style="color: #4338CA; font-family: 'JetBrains Mono';">({asset.get('ticker')})</span>
-        </h3>
-        <p style="color: #475569; font-size: 0.9rem; margin-top: 4px;">
-            Pedigree: <b>{asset.get('sire')}</b> x <b>{asset.get('dam')}</b> | Age: <b>{asset.get('age')}yo {asset.get('sex')}</b> | Form: <b>{asset.get('form')}</b>
-        </p>
+        <div style="background: linear-gradient(90deg, #F8FAFC 0%, #EEF2FF 100%); padding: 12px 16px; border-radius: 8px; border-left: 4px solid #4338CA; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+                <h3 style="color: #0F172A; font-weight: 900; margin: 0; font-size: 1.6rem; letter-spacing: -0.5px;">
+                    🏇 {asset.get('horse')}
+                </h3>
+                <span style="background: #4338CA; color: #FFFFFF; font-family: 'JetBrains Mono'; font-weight: 800; padding: 2px 8px; border-radius: 6px; font-size: 0.85rem;">{asset.get('ticker')}</span>
+                <span style="background: #F1F5F9; color: #475569; font-weight: 800; border: 1px solid #CBD5E1; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; text-transform: uppercase;">{asset.get('age')}yo {asset.get('sex')}</span>
+                <span style="background: #ECFDF5; color: #047857; font-weight: 800; border: 1px solid #A7F3D0; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; text-transform: uppercase;">Form: {asset.get('form')}</span>
+            </div>
+            <div style="color: #64748B; font-size: 0.85rem; font-weight: 600;">
+                Pedigree: <span style="color: #334155; font-weight: 800;">{asset.get('sire')}</span> × <span style="color: #334155; font-weight: 800;">{asset.get('dam')}</span>
+            </div>
+        </div>
         """, unsafe_allow_html=True)
 
     with d_col2:
