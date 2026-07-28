@@ -23,9 +23,9 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
         return
 
     st.markdown("""
-    <div style="background: #FFFFFF; border: 2px solid #10B981; border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.12);">
-        <h3 style="color: #047857; margin-top: 0; font-weight: 900;">📈 SEABISCUIT +EV ALPHA STRATEGY BACKTEST & P/L TRACKER</h3>
-        <p style="color: #475569; font-size: 0.95rem; margin-bottom: 0;">Empirical performance simulation of strictly placing bets on Seabiscuit 🟢 +EV Golden Nuggets across all completed races.</p>
+    <div class="glass-card" style="border-top: 4px solid var(--accent-emerald, #10B981); padding: 18px 24px; margin-bottom: 20px; animation: fadeIn 0.5s ease;">
+        <h3 style="color: #047857; margin-top: 0; font-weight: 900; font-family: 'Outfit', sans-serif;">📈 SEABISCUIT +EV ALPHA STRATEGY BACKTEST & P/L TRACKER</h3>
+        <p style="color: var(--text-muted, #475569); font-size: 0.92rem; margin-bottom: 0; font-weight: 600;">Empirical performance simulation of strictly placing bets on Seabiscuit 🟢 +EV Golden Nuggets across all completed races.</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -51,7 +51,7 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
     st.plotly_chart(fig_eq, width="stretch", config={"responsive": True, "displayModeBar": False})
 
     # Trade Execution History Table
-    st.markdown("<h5 style='color: #0F172A; font-weight: 800;'>📋 QUANTITATIVE TRADE EXECUTION LOG</h5>", unsafe_allow_html=True)
+    st.markdown("<h5 style='color: var(--text-primary, #0F172A); font-weight: 800; animation: fadeIn 0.4s ease;'>📋 QUANTITATIVE TRADE EXECUTION LOG</h5>", unsafe_allow_html=True)
     if res.get("bets_history"):
         st.dataframe(
             [

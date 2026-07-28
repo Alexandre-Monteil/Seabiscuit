@@ -71,11 +71,12 @@ def render_stock_asset_cards(equity_assets: List[Dict[str, Any]]):
             ev_color = "#B45309"
 
         pl_color = "#059669" if one_unit_pl > 0 else "#E11D48"
-        beyer_pct = min(100, max(0, (beyer_speed - 50) / 80 * 100)) # Normalize beyer 50-130 to 0-100%
-        kelly_pct_capped = min(100, max(0, kelly_stake * 5)) # Cap for progress bar visualization
+        beyer_pct = min(100, max(0, (beyer_speed - 50) / 80 * 100))  # Normalize beyer 50-130 to 0-100%
+        kelly_pct_capped = min(100, max(0, kelly_stake * 5))  # Cap for progress bar visualization
+        anim_delay = f"{idx * 0.08:.2f}s"
 
         card_html = f"""
-<div style="background: {card_bg}; border: 1.5px solid {card_border}; border-top: 5px solid {card_border}; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); transition: transform 0.2s ease, box-shadow 0.2s ease;">
+<div class="glass-card" style="background: {card_bg}; border: 1.5px solid {card_border}; border-top: 5px solid {card_border}; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); animation: fadeIn 0.5s ease {anim_delay} both;">
     
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 900; color: #1E1B4B; letter-spacing: -0.5px;">#{idx+1} {ticker}</span>
@@ -118,7 +119,7 @@ def render_stock_asset_cards(equity_assets: List[Dict[str, Any]]):
                 <span style="font-size: 1.05rem; font-weight: 900; color: #4338CA; font-family: 'JetBrains Mono', monospace;">{beyer_speed}</span>
             </div>
             <div style="width: 100%; height: 6px; background-color: #E2E8F0; border-radius: 3px; overflow: hidden;">
-                <div style="width: {beyer_pct}%; height: 100%; background: linear-gradient(90deg, #818CF8 0%, #4338CA 100%);"></div>
+                <div style="width: {beyer_pct}%; height: 100%; background: linear-gradient(90deg, #818CF8 0%, #4338CA 100%); transition: width 0.6s ease;"></div>
             </div>
         </div>
 
@@ -129,7 +130,7 @@ def render_stock_asset_cards(equity_assets: List[Dict[str, Any]]):
                 <span style="font-size: 1.05rem; font-weight: 900; color: #047857; font-family: 'JetBrains Mono', monospace;">{kelly_stake:.1f}%</span>
             </div>
             <div style="width: 100%; height: 6px; background-color: #E2E8F0; border-radius: 3px; overflow: hidden;">
-                <div style="width: {kelly_pct_capped}%; height: 100%; background: linear-gradient(90deg, #34D399 0%, #047857 100%);"></div>
+                <div style="width: {kelly_pct_capped}%; height: 100%; background: linear-gradient(90deg, #34D399 0%, #047857 100%); transition: width 0.6s ease;"></div>
             </div>
         </div>
     </div>

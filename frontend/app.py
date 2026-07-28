@@ -32,56 +32,133 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# DRASTIC ULTRA-CLARITY HIGH-CONTRAST LIGHT & CRISP CSS
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap');
+# ─── PREMIUM DESIGN SYSTEM: LIGHT / TRADING / PROFESSIONNEL / TECHNIQUE ───
+st.markdown("""<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&family=Outfit:wght@400;600;700;800;900&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: 'Outfit', sans-serif;
-        background-color: #F8FAFC !important;
-        color: #0F172A !important;
-    }
-    
-    .stApp {
-        background: #F8FAFC !important;
-    }
+:root {
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #EFF3F8;
+  --bg-card: rgba(255,255,255,0.72);
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --accent-emerald: #10B981;
+  --accent-cyan: #0284C7;
+  --accent-amber: #F59E0B;
+  --accent-violet: #6366F1;
+  --accent-gold: #EAB308;
+  --accent-rose: #F43F5E;
+  --card-border: rgba(203,213,225,0.6);
+  --card-shadow: 0 4px 20px rgba(15,23,42,0.06);
+  --card-shadow-hover: 0 12px 32px rgba(15,23,42,0.12);
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+}
 
-    div[data-testid="stMetricValue"] {
-        font-size: 1.8rem !important;
-        font-weight: 900 !important;
-        color: #0F172A !important;
-    }
+/* ── Base ── */
+.stApp { background: var(--bg-primary) !important; font-family: 'Inter', 'Outfit', -apple-system, sans-serif !important; }
+h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', 'Inter', sans-serif !important; letter-spacing: -0.3px; }
 
-    div[data-testid="stMetricLabel"] {
-        font-size: 0.9rem !important;
-        font-weight: 800 !important;
-        color: #475569 !important;
-    }
+/* ── Glass Card ── */
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--card-shadow);
+  transition: transform 0.28s cubic-bezier(.4,0,.2,1), box-shadow 0.28s cubic-bezier(.4,0,.2,1);
+}
+.glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--card-shadow-hover);
+}
 
-    div[data-baseweb="select"] > div {
-        background-color: #FFFFFF !important;
-        color: #0F172A !important;
-        border-color: #CBD5E1 !important;
-        font-weight: 700 !important;
-    }
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.25); }
+  50%      { box-shadow: 0 0 12px 4px rgba(16,185,129,0.15); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
 
-    .stButton > button {
-        background: #FFFFFF !important;
-        color: #4338CA !important;
-        border: 2px solid #4338CA !important;
-        font-weight: 800 !important;
-        border-radius: 8px !important;
-        transition: all 0.2s ease-in-out !important;
-    }
+/* ── Table Enhancements ── */
+table { font-family: 'Inter', sans-serif !important; }
+table thead tr { position: sticky; top: 0; z-index: 1; }
+table tbody tr { transition: background-color 0.18s ease; }
+table tbody tr:hover { background-color: rgba(99,102,241,0.04) !important; }
 
-    .stButton > button:hover {
-        background: #4338CA !important;
-        color: #FFFFFF !important;
-        box-shadow: 0 4px 12px rgba(67, 56, 202, 0.25) !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+/* ── Metric Cards ── */
+[data-testid="stMetric"] {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px !important;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+[data-testid="stMetric"]:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow-hover);
+}
+[data-testid="stMetricLabel"] { font-weight: 800 !important; text-transform: uppercase; font-size: 0.72rem !important; letter-spacing: 0.4px; color: var(--text-muted) !important; }
+[data-testid="stMetricValue"] { font-family: 'JetBrains Mono', monospace !important; font-weight: 900 !important; color: var(--text-primary) !important; }
+
+/* ── Buttons ── */
+.stButton > button {
+  background: var(--bg-primary) !important;
+  color: var(--accent-cyan) !important;
+  border: 2px solid var(--accent-cyan) !important;
+  font-weight: 800 !important;
+  border-radius: var(--radius-md) !important;
+  font-family: 'Inter', sans-serif !important;
+  letter-spacing: 0.3px;
+  transition: all 0.22s cubic-bezier(.4,0,.2,1) !important;
+}
+.stButton > button:hover {
+  background: var(--accent-cyan) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 18px rgba(2,132,199,0.28) !important;
+  transform: translateY(-1px);
+}
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"] { gap: 6px; }
+.stTabs [data-baseweb="tab"] {
+  font-weight: 800 !important;
+  font-size: 0.85rem !important;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
+  transition: background 0.2s ease, color 0.2s ease !important;
+}
+
+/* ── Expander ── */
+.streamlit-expanderHeader { font-weight: 800 !important; font-size: 0.95rem !important; letter-spacing: -0.2px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* ── DataFrames ── */
+.stDataFrame { border-radius: var(--radius-md) !important; overflow: hidden; box-shadow: var(--card-shadow); }
+
+/* ── Live badge pulse ── */
+.live-pulse { animation: pulseGlow 2s ease-in-out infinite; }
+</style>""", unsafe_allow_html=True)
 
 
 @st.cache_data(ttl=15, show_spinner=False)
@@ -171,16 +248,25 @@ def main():
     
     current_dt = parse_race_datetime(current_racecard)
     is_live = current_dt >= now
-    status_badge = "<span style='background: #10B981; color: #FFFFFF; font-weight: 900; padding: 3px 10px; border-radius: 4px;'>🟢 LIVE UPCOMING</span>" if is_live else "<span style='background: #64748B; color: #FFFFFF; font-weight: 900; padding: 3px 10px; border-radius: 4px;'>🏁 COMPLETED EVENT</span>"
+    live_cls = "live-pulse" if is_live else ""
+    status_badge = f"<span class='{live_cls}' style='background: #10B981; color: #FFFFFF; font-weight: 900; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem;'>🟢 LIVE UPCOMING</span>" if is_live else "<span style='background: #64748B; color: #FFFFFF; font-weight: 900; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem;'>🏁 COMPLETED EVENT</span>"
 
     st.markdown(f"""
-    <div style="background: #FFFFFF; border: 1.5px solid #CBD5E1; padding: 14px 20px; border-radius: 10px; font-size: 0.95rem; color: #0F172A; box-shadow: 0 2px 6px rgba(0,0,0,0.04); margin-bottom: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div>
-                {status_badge} &nbsp;|&nbsp; 📍 <b style="color: #4338CA; font-size: 1.05rem;">{course_name}</b> &nbsp;|&nbsp; 📅 <b style="color: #0284C7;">{date_str}</b> &nbsp;|&nbsp; ⏱️ <b style="color: #059669;">{post_time} GMT</b>
+    <div class="glass-card" style="padding: 16px 22px; margin-bottom: 18px; animation: slideInLeft 0.5s ease;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.92rem; color: var(--text-primary);">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                {status_badge}
+                <span style="color: var(--card-border);">│</span>
+                📍 <b style="color: var(--accent-violet); font-size: 1.05rem;">{course_name}</b>
+                <span style="color: var(--card-border);">│</span>
+                📅 <b style="color: var(--accent-cyan);">{date_str}</b>
+                <span style="color: var(--card-border);">│</span>
+                ⏱️ <b style="color: var(--accent-emerald);">{post_time} GMT</b>
             </div>
-            <div>
-                📏 <b>{dist_full}</b> &nbsp;|&nbsp; {weather_info}
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text-secondary);">
+                📏 <b>{dist_full}</b>
+                <span style="color: var(--card-border);">│</span>
+                {weather_info}
             </div>
         </div>
     </div>
@@ -200,7 +286,7 @@ def main():
     # ---------------------------------------------------------
     # PROMINENT HERO FEATURE 2: TOP RACE EXECUTIVE SUMMARY TABLE
     # ---------------------------------------------------------
-    st.markdown("<h4 style='color: #0F172A; font-weight: 900; margin-bottom: 8px;'>📋 RACE RUNNERS EXECUTIVE SUMMARY TABLE</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: var(--text-primary); font-weight: 900; margin-bottom: 10px; animation: fadeIn 0.4s ease;'>📋 RACE RUNNERS EXECUTIVE SUMMARY TABLE</h4>", unsafe_allow_html=True)
     
     sorted_for_table = sorted(
         equity_assets,
@@ -209,10 +295,10 @@ def main():
     )
 
     table_html = """
-    <div style="overflow-x: auto; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; margin-bottom: 16px;">
-    <table style="width: 100%; border-collapse: collapse; background-color: #FFFFFF; font-family: 'Outfit', sans-serif;">
+    <div class="glass-card" style="overflow-x: auto; margin-bottom: 18px; animation: fadeIn 0.5s ease;">
+    <table style="width: 100%; border-collapse: collapse; font-family: 'Inter', 'Outfit', sans-serif;">
         <thead>
-            <tr style="background: linear-gradient(90deg, #F8FAFC 0%, #F1F5F9 100%); border-bottom: 2px solid #CBD5E1; text-align: left; color: #475569; font-size: 0.85rem; text-transform: uppercase;">
+            <tr style="background: linear-gradient(90deg, #F1F5F9 0%, #E8ECF2 100%); border-bottom: 2px solid #CBD5E1; text-align: left; color: #475569; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.4px;">
                 <th style="padding: 14px 16px; font-weight: 800;">Rank</th>
                 <th style="padding: 14px 16px; font-weight: 800;">Runner (Ticker)</th>
                 <th style="padding: 14px 16px; font-weight: 800; text-align: right;">Odds</th>
@@ -296,7 +382,7 @@ def main():
     # ---------------------------------------------------------
     # SECTION 5: COMPLETE 12-MODEL QUANT VISUAL ANALYTICS SUITE
     # ---------------------------------------------------------
-    st.markdown("<h4 style='color: #0F172A; font-weight: 900; margin-bottom: 14px;'>📊 COMPLETE QUANTITATIVE VISUAL ANALYTICS SUITE (ALL 12 MODELS)</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: var(--text-primary); font-weight: 900; margin-bottom: 14px; animation: fadeIn 0.4s ease;'>📊 COMPLETE QUANTITATIVE VISUAL ANALYTICS SUITE (ALL 12 MODELS)</h4>", unsafe_allow_html=True)
 
     # Row 1: Treemap & Finishing Position Probabilities (Model 1 & 10)
     col1, col2 = st.columns(2)
