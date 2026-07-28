@@ -141,9 +141,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=15, show_spinner=False)
 def fetch_race_data():
-    """Fetches and caches live racecard data across 15-day J-7 to J+7 horizon from The Racing API safely."""
+    """Fetches live racecard data across 15-day J-7 to J+7 horizon from The Racing API safely."""
     try:
         client = TheRacingAPIClient()
         raw_racecards = client.get_upcoming_racecards(past_days=7, future_days=7)
@@ -151,8 +151,15 @@ def fetch_race_data():
             return []
         processed = [EquineStockEngine.process_racecard(rc) for rc in raw_racecards if isinstance(rc, dict)]
         
-        # Sort all racecards strictly chronologically by exact race datetime
-        return sorted(processed, key=parse_race_datetime)
+        now = datetime.now()
+        # GUARANTEE: Upcoming live races (starting in the future) placed FIRST sorted by departure time
+        upcoming = [rc for rc in processed if parse_race_datetime(rc) >= now]
+        past = [rc for rc in processed if parse_race_datetime(rc) < now]
+        
+        upcoming_sorted = sorted(upcoming, key=parse_race_datetime)
+        past_sorted = sorted(past, key=parse_race_datetime, reverse=True)
+        
+        return upcoming_sorted + past_sorted
     except Exception:
         return []
 
@@ -189,35 +196,24 @@ def main():
     else:
         active_racecards = all_racecards
 
-    # Determine default index: NEXT UPCOMING RACE closest in future to current time
-    default_idx = 0
-    min_future_diff = float("inf")
-    
-    for idx, rc in enumerate(active_racecards):
-        rc_dt = parse_race_datetime(rc)
-        diff_sec = (rc_dt - now).total_seconds()
-        if diff_sec >= -300 and diff_sec < min_future_diff:
-            min_future_diff = diff_sec
-            default_idx = idx
-
     # Build Race Selector Labels with Live/Upcoming vs Finished Status Badges
     race_options = []
     for rc in active_racecards:
         rc_dt = parse_race_datetime(rc)
         is_upcoming = rc_dt >= now
-        status_tag = "🟢 UPCOMING" if is_upcoming else "🏁 FINISHED"
+        status_tag = "🟢 NEXT DEPARTURE" if is_upcoming else "🏁 FINISHED"
         race_options.append(f"{status_tag} | {rc.get('course', 'Track')} — {rc.get('race_name', 'Stakes')} ({rc.get('race_date_display', '')} @ {rc.get('post_time', '15:00')})")
 
     with race_col:
         selected_idx = st.selectbox(
             "Race Event Selector:",
             range(len(race_options)),
-            index=default_idx,
+            index=0,
             format_func=lambda i: race_options[i],
             label_visibility="collapsed"
         )
         if selected_idx >= len(active_racecards):
-            selected_idx = default_idx
+            selected_idx = 0
         current_racecard = active_racecards[selected_idx]
 
     with filter_col:

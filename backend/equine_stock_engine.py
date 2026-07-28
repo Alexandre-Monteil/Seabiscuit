@@ -42,100 +42,70 @@ class EquineStockEngine:
         """Calculates institutional quantitative stock metrics for an equine asset."""
         decimal_odds = max(1.01, safe_float(runner.get("decimal_odds"), default=4.0))
         
-        # 1. Share Price ($) = 100 / Odds (Bounded [1.01, 99.00])
         share_price = round(min(99.00, max(1.01, 100.0 / decimal_odds)), 2)
-        
-        # 2. Implied Market Win Probability q = 1 / Odds (%)
         implied_win_pct = round((1.0 / decimal_odds) * 100.0, 2)
         implied_win_prob = 1.0 / decimal_odds
-        
-        # 3. Market Capitalization ($)
         market_cap = round(race_pool_usd * (share_price / 100.0), 2)
         
-        # 4. Empirical Model Win Probability p
         beyer_speed = safe_int(runner.get("beyer_speed"), default=118 - runner_idx * 2)
         form_str = str(runner.get("form", ""))
         
-        # Empirical probability boost based on Beyers, form, and surface fit
         rating_boost = (beyer_speed - 100.0) * 0.005
-        form_boost = 0.04 if "1" in form_str else (-0.03 if "0" in form_str or "9" in form_str else 0.0)
+        form_boost = 0.05 if "1" in form_str else (-0.03 if "0" in form_str else 0.0)
         
-        # Base probability with hedge fund quantitative adjustments
-        raw_prob = implied_win_prob + rating_boost + form_boost
+        empirical_win_prob = min(0.92, max(0.02, implied_win_prob + rating_boost + form_boost))
         
-        if runner_idx == 0:  # Top contender
-            raw_prob = max(implied_win_prob * 1.15, raw_prob)
-        elif runner_idx == 1: # Value contender
-            raw_prob = max(implied_win_prob * 1.08, raw_prob)
-        elif runner_idx >= total_runners - 2: # Overpriced longshot
-            raw_prob = min(implied_win_prob * 0.70, raw_prob)
-            
-        empirical_win_prob = max(0.01, min(0.95, raw_prob))
-        win_pct = round(empirical_win_prob, 4)
+        expected_val = empirical_win_prob * decimal_odds - 1.0
+        expected_val_pct = round(expected_val * 100.0, 1)
         
-        # 5. Alpha Ratio (A/E Ratio = Empirical Win Prob / Implied Market Win Prob)
         ae_ratio = round(empirical_win_prob / max(0.001, implied_win_prob), 2)
         
-        # 6. Expected Value (EV = p * Odds - 1)
-        expected_value = round(empirical_win_prob * decimal_odds - 1.0, 3)
-        
-        # 7. 1-Unit Historical Profit/Loss ($) = EV * 25.0 (or raw API 1_pl)
-        raw_1_pl = runner.get("one_unit_pl") or runner.get("1_pl")
-        if raw_1_pl is not None and safe_float(raw_1_pl, 0.0) != 0.0:
+        raw_1_pl = runner.get("one_unit_pl")
+        if raw_1_pl is not None:
             one_unit_pl = safe_float(raw_1_pl)
         else:
-            one_unit_pl = round(expected_value * 25.0, 2)
+            one_unit_pl = round(expected_val * 25.0, 2)
 
-        # 8. Dividend Yield (%)
-        moisture_fit = safe_float(runner.get("track_moisture_fit"), default=0.88)
-        dividend_yield = round(((empirical_win_prob * moisture_fit * 2.5) / max(1.0, share_price)) * 100.0, 2)
-
-        # 9. Kelly Stake Calculation (%)
         kelly_stake_pct = cls.calculate_kelly_stake(empirical_win_prob, decimal_odds)
+        moisture_fit = safe_float(runner.get("track_moisture_fit"), default=0.88)
 
-        # 10. QUANTITATIVE ALPHA CLASSIFICATION
-        if expected_value >= +0.04 or ae_ratio >= 1.08:
+        if expected_val_pct > 5.0 and ae_ratio > 1.10:
             asset_tag = "VALUE_BUY"
-            card_color = "#00FF87"  # Cyber Emerald
-            card_label = "🟢 +EV GOLDEN NUGGET"
-            tag_expl = f"Model win prob ({empirical_win_prob*100:.1f}%) exceeds market implied odds (A/E {ae_ratio:.2f}, EV +{expected_value*100:.1f}%). Rec. Half-Kelly: {kelly_stake_pct}%."
-        elif expected_value <= -0.12 or ae_ratio <= 0.88:
+            card_color = "#10B981"
+            card_label = "🟢 🚀 +EV GOLDEN NUGGET"
+            tag_expl = f"Model win prob ({empirical_win_prob*100:.1f}%) exceeds market implied odds (A/E {ae_ratio:.2f}, EV {expected_val_pct:+.1f}%). Rec. Half-Kelly: {kelly_stake_pct:.1f}%."
+        elif expected_val_pct < -8.0 or ae_ratio < 0.85:
             asset_tag = "OVERVALUED_FADE"
-            card_color = "#FF0055"  # Neon Crimson
-            card_label = "🔴 OVERPRICED FADE"
-            tag_expl = f"Market trades at premium (${share_price:.2f}). Weak A/E ratio ({ae_ratio:.2f}) & negative EV ({expected_value*100:.1f}%). High fade candidate."
+            card_color = "#F43F5E"
+            card_label = "🔴 ⚠️ OVERPRICED FADE"
+            tag_expl = f"Market odds overestimating win chance (A/E {ae_ratio:.2f}, EV {expected_val_pct:+.1f}%). Recommend fading asset."
         else:
             asset_tag = "MID_TIER_HEDGE"
-            card_color = "#FFB800"  # Gold
-            card_label = "🟡 VALUE HEDGE"
-            tag_expl = f"Fairly priced asset (A/E {ae_ratio:.2f}). Suitable for place coverage & dutch hedging."
-
-        # Ticker Symbol Generation
-        horse_name = str(runner.get("horse", "RUNNER")).upper().replace(" ", "")[:6]
-        jockey_name = str(runner.get("jockey", "JCK")).split()[-1].upper()[:4]
-        ticker = f"${horse_name}_{jockey_name}"
+            card_color = "#F59E0B"
+            card_label = "🟡 ⚡ CHAD OUTSIDER HEDGE"
+            tag_expl = f"Fairly priced asset (A/E {ae_ratio:.2f}, EV {expected_val_pct:+.1f}%). High Beyer speed rating ({beyer_speed})."
 
         return {
-            "ticker": ticker,
-            "horse_id": runner.get("horse_id", "hrs_00"),
-            "horse": runner.get("horse"),
-            "jockey": runner.get("jockey"),
-            "trainer": runner.get("trainer"),
-            "owner": runner.get("owner"),
-            "sire": runner.get("sire"),
-            "dam": runner.get("dam"),
-            "age": runner.get("age", 4),
+            "horse_id": runner.get("horse_id") or f"hrs_{runner_idx}",
+            "horse": runner.get("horse", "Runner"),
+            "ticker": f"${runner.get('horse', 'RUNNER')[:6].upper().replace(' ', '')}_{runner.get('jockey', 'JKY')[:4].upper().replace(' ', '')}",
+            "sire": runner.get("sire", "Thoroughbred"),
+            "dam": runner.get("dam", "Dam"),
+            "age": safe_int(runner.get("age"), default=4),
             "sex": runner.get("sex", "Stallion"),
-            "form": runner.get("form", "11-1"),
-            "decimal_odds": decimal_odds,
+            "trainer": runner.get("trainer", "Trainer"),
+            "jockey": runner.get("jockey", "Jockey"),
+            "owner": runner.get("owner", "Owner"),
+            "form": runner.get("form", "1-1-2"),
             "share_price_usd": share_price,
+            "decimal_odds": decimal_odds,
             "implied_win_pct": implied_win_pct,
-            "win_percent": win_pct,
-            "place_percent": 0.65,
+            "win_percent": round(empirical_win_prob, 4),
+            "place_percent": safe_float(runner.get("place_percent"), default=0.65),
             "market_cap_usd": market_cap,
-            "dividend_yield_pct": dividend_yield,
+            "expected_value": round(expected_val, 4),
+            "expected_value_pct": expected_val_pct,
             "ae_ratio": ae_ratio,
-            "expected_value": expected_value,
             "one_unit_pl": one_unit_pl,
             "beyer_speed": beyer_speed,
             "kelly_stake_pct": kelly_stake_pct,
@@ -175,6 +145,8 @@ class EquineStockEngine:
             "prize_money_usd": prize_money,
             "race_class": racecard.get("race_class"),
             "post_time": racecard.get("post_time"),
+            "race_date": racecard.get("race_date"),
+            "race_date_display": racecard.get("race_date_display"),
             "equity_assets": processed_runners
         }
 
