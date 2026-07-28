@@ -76,7 +76,7 @@ def render_bet_simulator_view(racecard: Dict[str, Any]):
                 <div style="position: absolute; top: 10px; right: 10px; background: rgba(67,56,202,0.1); color: #4338CA; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 800;">🥇 GAGNANT (WIN)</div>
                 <div style="font-size: 0.75rem; color: #64748B; font-weight: 800; text-transform: uppercase;">Projected Win Payout</div>
                 <div style="font-size: 2.2rem; font-weight: 900; color: #0F172A; font-family: 'JetBrains Mono', monospace; margin: 4px 0;">${w_data['payout_usd']:,.2f}</div>
-                <div style="font-size: 0.9rem; color: {w_ev_color}; font-weight: 800; margin-bottom: 12px;">{'+' if w_data['net_profit_usd'] > 0 else ''}${w_data['net_profit_usd']:,.2f} Net Profit</div>
+                <div style="font-size: 0.9rem; color: {w_ev_color}; font-weight: 800; margin-bottom: 12px;">{'+' if w_data['profit_usd'] > 0 else ''}${w_data['profit_usd']:,.2f} Net Profit</div>
                 <div style="background: #F1F5F9; border-radius: 6px; padding: 8px; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 0.75rem; color: #475569; font-weight: 700;">EV EDGE</span>
                     <span style="font-size: 0.95rem; font-weight: 900; color: {w_ev_color}; font-family: 'JetBrains Mono';">{w_data['ev_pct']:+.1f}%</span>
@@ -88,7 +88,7 @@ def render_bet_simulator_view(racecard: Dict[str, Any]):
                 <div style="position: absolute; top: 10px; right: 10px; background: rgba(2,132,199,0.1); color: #0284C7; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 800;">🥈 PLACÉ (PLACE)</div>
                 <div style="font-size: 0.75rem; color: #64748B; font-weight: 800; text-transform: uppercase;">Projected Place Payout</div>
                 <div style="font-size: 2.2rem; font-weight: 900; color: #0F172A; font-family: 'JetBrains Mono', monospace; margin: 4px 0;">${p_data['payout_usd']:,.2f}</div>
-                <div style="font-size: 0.9rem; color: {p_ev_color}; font-weight: 800; margin-bottom: 12px;">{'+' if p_data['net_profit_usd'] > 0 else ''}${p_data['net_profit_usd']:,.2f} Net Profit</div>
+                <div style="font-size: 0.9rem; color: {p_ev_color}; font-weight: 800; margin-bottom: 12px;">{'+' if p_data['profit_usd'] > 0 else ''}${p_data['profit_usd']:,.2f} Net Profit</div>
                 <div style="background: #F1F5F9; border-radius: 6px; padding: 8px; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 0.75rem; color: #475569; font-weight: 700;">EV EDGE</span>
                     <span style="font-size: 0.95rem; font-weight: 900; color: {p_ev_color}; font-family: 'JetBrains Mono';">{p_data['ev_pct']:+.1f}%</span>
@@ -111,25 +111,25 @@ def render_bet_simulator_view(racecard: Dict[str, Any]):
         with c3:
             duo_stake = st.slider("Stake ($):", min_value=5.0, max_value=250.0, value=25.0, step=5.0, key="sim_duo_stake")
 
-        res_duo = QuantBetSimulatorEngine.simulate_couple_duo(runners[r1_idx], runners[r2_idx], stake_usd=duo_stake)
-        d_g = res_duo["couple_gagnant"]
-        ev_color = "#10B981" if d_g['ev_pct'] > 0 else "#F43F5E"
+        res_duo = QuantBetSimulatorEngine.simulate_duo_couple(runners[r1_idx], runners[r2_idx], stake_usd=duo_stake)
+        d_g = res_duo
+        ev_color = "#10B981" if d_g.get('ev_pct', 0) > 0 else "#F43F5E"
 
         slip_html = f"""
         <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%); border: 2px dashed #CBD5E1; border-top: 6px solid #D97706; border-radius: 12px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); margin-top: 10px; position: relative; text-align: center;">
             <div style="position: absolute; top: 12px; right: 12px; background: rgba(217,119,6,0.1); color: #D97706; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 900;">👯 COUPLÉ DUO (EXACTA)</div>
             <div style="font-size: 0.85rem; color: #64748B; font-weight: 800; text-transform: uppercase;">Projected Duo Payout</div>
-            <div style="font-size: 3.2rem; font-weight: 900; color: #0F172A; font-family: 'JetBrains Mono', monospace; margin: 8px 0;">${d_g['payout_usd']:,.2f}</div>
-            <div style="font-size: 1.1rem; color: {ev_color}; font-weight: 900; margin-bottom: 20px;">{'+' if d_g['net_profit_usd'] > 0 else ''}${d_g['net_profit_usd']:,.2f} Net Profit</div>
+            <div style="font-size: 3.2rem; font-weight: 900; color: #0F172A; font-family: 'JetBrains Mono', monospace; margin: 8px 0;">${d_g.get('payout_usd', 0):,.2f}</div>
+            <div style="font-size: 1.1rem; color: {ev_color}; font-weight: 900; margin-bottom: 20px;">{'+' if d_g.get('profit_usd', 0) > 0 else ''}${d_g.get('profit_usd', 0):,.2f} Net Profit</div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 400px; margin: 0 auto;">
                 <div style="background: #F1F5F9; border-radius: 8px; padding: 12px;">
                     <div style="font-size: 0.75rem; color: #475569; font-weight: 800; margin-bottom: 4px;">HARVILLE JOINT PROB</div>
-                    <div style="font-size: 1.2rem; font-weight: 900; color: #0F172A; font-family: 'JetBrains Mono';">{d_g['joint_prob_pct']:.2f}%</div>
+                    <div style="font-size: 1.2rem; font-weight: 900; color: #0F172A; font-family: 'JetBrains Mono';">{d_g.get('joint_prob_pct', 0):.2f}%</div>
                 </div>
                 <div style="background: #F1F5F9; border-radius: 8px; padding: 12px;">
                     <div style="font-size: 0.75rem; color: #475569; font-weight: 800; margin-bottom: 4px;">EXPECTED RETURN (EV)</div>
-                    <div style="font-size: 1.2rem; font-weight: 900; color: {ev_color}; font-family: 'JetBrains Mono';">{d_g['ev_pct']:+.1f}%</div>
+                    <div style="font-size: 1.2rem; font-weight: 900; color: {ev_color}; font-family: 'JetBrains Mono';">{d_g.get('ev_pct', 0):+.1f}%</div>
                 </div>
             </div>
         </div>
@@ -154,23 +154,23 @@ def render_bet_simulator_view(racecard: Dict[str, Any]):
             trio_stake = st.number_input("Stake ($):", min_value=2.0, max_value=500.0, value=10.0, step=2.0, key="sim_trio_stake")
 
         res_trio = QuantBetSimulatorEngine.simulate_trio(runners[tr1], runners[tr2], runners[tr3], stake_usd=trio_stake)
-        ev_color = "#10B981" if res_trio['ev_pct'] > 0 else "#F43F5E"
+        ev_color = "#10B981" if res_trio.get('ev_pct', 0) > 0 else "#F43F5E"
 
         slip_html = f"""
         <div style="background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%); border: 2px dashed #CBD5E1; border-top: 6px solid #8B5CF6; border-radius: 12px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); margin-top: 10px; position: relative; text-align: center;">
             <div style="position: absolute; top: 12px; right: 12px; background: rgba(139,92,246,0.1); color: #8B5CF6; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 900;">🥉 TRIO (TRIFECTA)</div>
             <div style="font-size: 0.85rem; color: #64748B; font-weight: 800; text-transform: uppercase;">Projected Trio Payout</div>
-            <div style="font-size: 3.2rem; font-weight: 900; color: #0F172A; font-family: 'JetBrains Mono', monospace; margin: 8px 0;">${res_trio['payout_usd']:,.2f}</div>
-            <div style="font-size: 1.1rem; color: {ev_color}; font-weight: 900; margin-bottom: 20px;">{'+' if res_trio['net_profit_usd'] > 0 else ''}${res_trio['net_profit_usd']:,.2f} Net Profit</div>
+            <div style="font-size: 3.2rem; font-weight: 900; color: #0F172A; font-family: 'JetBrains Mono', monospace; margin: 8px 0;">${res_trio.get('payout_usd', 0):,.2f}</div>
+            <div style="font-size: 1.1rem; color: {ev_color}; font-weight: 900; margin-bottom: 20px;">{'+' if res_trio.get('profit_usd', 0) > 0 else ''}${res_trio.get('profit_usd', 0):,.2f} Net Profit</div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 400px; margin: 0 auto;">
                 <div style="background: #F1F5F9; border-radius: 8px; padding: 12px;">
                     <div style="font-size: 0.75rem; color: #475569; font-weight: 800; margin-bottom: 4px;">HARVILLE TRIO PROB</div>
-                    <div style="font-size: 1.2rem; font-weight: 900; color: #0F172A; font-family: 'JetBrains Mono';">{res_trio['joint_prob_pct']:.3f}%</div>
+                    <div style="font-size: 1.2rem; font-weight: 900; color: #0F172A; font-family: 'JetBrains Mono';">{res_trio.get('joint_prob_pct', 0):.3f}%</div>
                 </div>
                 <div style="background: #F1F5F9; border-radius: 8px; padding: 12px;">
                     <div style="font-size: 0.75rem; color: #475569; font-weight: 800; margin-bottom: 4px;">EXPECTED RETURN (EV)</div>
-                    <div style="font-size: 1.2rem; font-weight: 900; color: {ev_color}; font-family: 'JetBrains Mono';">{res_trio['ev_pct']:+.1f}%</div>
+                    <div style="font-size: 1.2rem; font-weight: 900; color: {ev_color}; font-family: 'JetBrains Mono';">{res_trio.get('ev_pct', 0):+.1f}%</div>
                 </div>
             </div>
         </div>
@@ -187,23 +187,23 @@ def render_bet_simulator_view(racecard: Dict[str, Any]):
             if len(q_selected) == 5:
                 indices = [runner_names.index(s) for s in q_selected]
                 q_runners = [runners[i] for i in indices]
-                q_res = QuantBetSimulatorEngine.simulate_quinte_plus(q_runners, stake_usd=10.0)
-                ev_color = "#10B981" if q_res['ev_pct'] > 0 else "#F43F5E"
+                q_res = QuantBetSimulatorEngine.simulate_quinte(q_runners, stake_usd=10.0)
+                ev_color = "#10B981" if q_res.get('ev_pct', 0) > 0 else "#F43F5E"
                 
                 slip_html = f"""
                 <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 2px dashed #475569; border-top: 6px solid #EAB308; border-radius: 12px; padding: 24px; box-shadow: 0 12px 30px rgba(0,0,0,0.2); margin-top: 10px; position: relative; text-align: center;">
                     <div style="position: absolute; top: 12px; right: 12px; background: rgba(234,179,8,0.2); color: #FDE047; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 900;">🏆 QUINTÉ+ (JACKPOT)</div>
                     <div style="font-size: 0.85rem; color: #94A3B8; font-weight: 800; text-transform: uppercase;">Projected Jackpot Dividend</div>
-                    <div style="font-size: 4rem; font-weight: 900; color: #FDE047; font-family: 'JetBrains Mono', monospace; margin: 8px 0; text-shadow: 0 0 20px rgba(234,179,8,0.4);">${q_res['projected_jackpot_usd']:,.2f}</div>
+                    <div style="font-size: 4rem; font-weight: 900; color: #FDE047; font-family: 'JetBrains Mono', monospace; margin: 8px 0; text-shadow: 0 0 20px rgba(234,179,8,0.4);">${q_res.get('payout_usd', 0):,.2f}</div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 400px; margin: 20px auto 0 auto;">
                         <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px;">
                             <div style="font-size: 0.75rem; color: #94A3B8; font-weight: 800; margin-bottom: 4px;">COMBINATION PROB</div>
-                            <div style="font-size: 1.2rem; font-weight: 900; color: #F8FAFC; font-family: 'JetBrains Mono';">{q_res['joint_prob_pct']:.4f}%</div>
+                            <div style="font-size: 1.2rem; font-weight: 900; color: #F8FAFC; font-family: 'JetBrains Mono';">{q_res.get('joint_prob_pct', 0):.4f}%</div>
                         </div>
                         <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px;">
                             <div style="font-size: 0.75rem; color: #94A3B8; font-weight: 800; margin-bottom: 4px;">EXPECTED RETURN (EV)</div>
-                            <div style="font-size: 1.2rem; font-weight: 900; color: {ev_color}; font-family: 'JetBrains Mono';">{q_res['ev_pct']:+.1f}%</div>
+                            <div style="font-size: 1.2rem; font-weight: 900; color: {ev_color}; font-family: 'JetBrains Mono';">{q_res.get('ev_pct', 0):+.1f}%</div>
                         </div>
                     </div>
                 </div>
