@@ -39,7 +39,7 @@ class EquineStockEngine:
 
     @classmethod
     def calculate_stock_metrics(cls, runner: Dict[str, Any], race_pool_usd: float = 2000000.0, runner_idx: int = 0, total_runners: int = 8) -> Dict[str, Any]:
-        """Calculates institutional quantitative stock metrics for an equine asset."""
+        """Calculates institutional quantitative stock metrics for an equine asset with relative multiplicative A/E scaling."""
         decimal_odds = max(1.01, safe_float(runner.get("decimal_odds"), default=4.0))
         
         share_price = round(min(99.00, max(1.01, 100.0 / decimal_odds)), 2)
@@ -47,18 +47,24 @@ class EquineStockEngine:
         implied_win_prob = 1.0 / decimal_odds
         market_cap = round(race_pool_usd * (share_price / 100.0), 2)
         
-        beyer_speed = safe_int(runner.get("beyer_speed"), default=118 - runner_idx * 2)
+        beyer_speed = safe_int(runner.get("beyer_speed"), default=112 - runner_idx * 2)
         form_str = str(runner.get("form", ""))
         
-        rating_boost = (beyer_speed - 100.0) * 0.005
-        form_boost = 0.05 if "1" in form_str else (-0.03 if "0" in form_str else 0.0)
+        # Relative Multiplicative Model Win Probability & Bounded A/E Alpha Scaling
+        avg_beyer_benchmark = 110.0
+        rating_delta = (beyer_speed - avg_beyer_benchmark) / 25.0  # Relative speed rating scaling
+        form_delta = 0.06 if "1" in form_str else (-0.06 if "0" in form_str or "9" in form_str else 0.0)
         
-        empirical_win_prob = min(0.92, max(0.02, implied_win_prob + rating_boost + form_boost))
+        # A/E ratio strictly bounded within realistic quantitative hedge fund range [0.75, 1.35]
+        ae_ratio = round(min(1.35, max(0.75, 1.00 + rating_delta * 0.12 + form_delta)), 2)
         
-        expected_val = empirical_win_prob * decimal_odds - 1.0
-        expected_val_pct = round(expected_val * 100.0, 1)
+        # Empirical Win Prob = Implied Win Prob * A/E Ratio
+        empirical_win_prob = round(min(0.92, max(0.01, implied_win_prob * ae_ratio)), 4)
         
-        ae_ratio = round(empirical_win_prob / max(0.001, implied_win_prob), 2)
+        # Expected Value EV = p * Odds - 1.0 (Bounded within [-35.0%, +40.0%])
+        raw_ev = (empirical_win_prob * decimal_odds) - 1.0
+        expected_val_pct = round(min(40.0, max(-35.0, raw_ev * 100.0)), 1)
+        expected_val = round(expected_val_pct / 100.0, 4)
         
         raw_1_pl = runner.get("one_unit_pl")
         if raw_1_pl is not None:
@@ -69,12 +75,12 @@ class EquineStockEngine:
         kelly_stake_pct = cls.calculate_kelly_stake(empirical_win_prob, decimal_odds)
         moisture_fit = safe_float(runner.get("track_moisture_fit"), default=0.88)
 
-        if expected_val_pct > 5.0 and ae_ratio > 1.10:
+        if expected_val_pct > 4.0 and ae_ratio >= 1.05:
             asset_tag = "VALUE_BUY"
             card_color = "#10B981"
             card_label = "🟢 🚀 +EV GOLDEN NUGGET"
             tag_expl = f"Model win prob ({empirical_win_prob*100:.1f}%) exceeds market implied odds (A/E {ae_ratio:.2f}, EV {expected_val_pct:+.1f}%). Rec. Half-Kelly: {kelly_stake_pct:.1f}%."
-        elif expected_val_pct < -8.0 or ae_ratio < 0.85:
+        elif expected_val_pct < -5.0 or ae_ratio < 0.92:
             asset_tag = "OVERVALUED_FADE"
             card_color = "#F43F5E"
             card_label = "🔴 ⚠️ OVERPRICED FADE"
@@ -100,10 +106,10 @@ class EquineStockEngine:
             "share_price_usd": share_price,
             "decimal_odds": decimal_odds,
             "implied_win_pct": implied_win_pct,
-            "win_percent": round(empirical_win_prob, 4),
+            "win_percent": empirical_win_prob,
             "place_percent": safe_float(runner.get("place_percent"), default=0.65),
             "market_cap_usd": market_cap,
-            "expected_value": round(expected_val, 4),
+            "expected_value": expected_val,
             "expected_value_pct": expected_val_pct,
             "ae_ratio": ae_ratio,
             "one_unit_pl": one_unit_pl,
