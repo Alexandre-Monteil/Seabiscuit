@@ -1,0 +1,74 @@
+"""
+SEABISCUIT - Interactive Quantitative EV Alpha Backtest UI Component
+Renders cumulative bankroll growth, win rate %, ROI %, Sharpe Ratio, Max Drawdown, and trade history table.
+"""
+
+from typing import List, Dict, Any
+import streamlit as st
+
+try:
+    from backend.backtest_engine import EquineBacktestEngine
+    from backend.visualization_3d import EquineVisualization3D
+    from backend.utils import safe_float, safe_int
+except (ImportError, ValueError):
+    from backend.backtest_engine import EquineBacktestEngine
+    from backend.visualization_3d import EquineVisualization3D
+    from backend.utils import safe_float, safe_int
+
+
+def render_backtest_view(all_racecards: List[Dict[str, Any]]):
+    """Renders the Seabiscuit Quantitative Strategy Backtest & P/L Tracker Dashboard."""
+    if not all_racecards:
+        st.info("No racecard data available for backtesting.")
+        return
+
+    st.markdown("""
+    <div style="background: #FFFFFF; border: 2px solid #10B981; border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.12);">
+        <h3 style="color: #047857; margin-top: 0; font-weight: 900;">📈 SEABISCUIT +EV ALPHA STRATEGY BACKTEST & P/L TRACKER</h3>
+        <p style="color: #475569; font-size: 0.95rem; margin-bottom: 0;">Empirical performance simulation of strictly placing bets on Seabiscuit 🟢 +EV Golden Nuggets across all completed races.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    b_col1, b_col2 = st.columns([1, 3])
+    with b_col1:
+        initial_capital = st.number_input("Initial Capital ($):", min_value=100.0, max_value=10000.0, value=1000.0, step=100.0, key="bt_capital")
+        unit_stake = st.number_input("Fixed Stake per Bet ($):", min_value=5.0, max_value=500.0, value=25.0, step=5.0, key="bt_stake")
+
+    res = EquineBacktestEngine.run_ev_strategy_backtest(all_racecards, initial_bankroll_usd=initial_capital, unit_bet_usd=unit_stake)
+
+    # Key Backtest KPIs
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("Final Bankroll", f"${res['final_bankroll_usd']:,.2f}", delta=f"${res['total_profit_usd']:+,.2f}")
+    k2.metric("Cumulative ROI", f"{res['roi_pct']:+.1f}%", delta="🟢 Alpha Edge" if res['roi_pct'] > 0 else "🔴 -EV")
+    k3.metric("Win Rate %", f"{res['win_rate_pct']:.1f}%", delta=f"{res['winning_bets']}/{res['total_bets']} Wins")
+    k4.metric("Sharpe Ratio", f"{res['sharpe_ratio']:.2f}")
+    k5.metric("Max Drawdown", f"-{res['max_drawdown_pct']:.1f}%")
+
+    st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
+
+    # Plot Equity Curve
+    fig_eq = EquineVisualization3D.build_backtest_equity_curve_chart(res)
+    st.plotly_chart(fig_eq, width="stretch", config={"responsive": True, "displayModeBar": False})
+
+    # Trade Execution History Table
+    st.markdown("<h5 style='color: #0F172A; font-weight: 800;'>📋 QUANTITATIVE TRADE EXECUTION LOG</h5>", unsafe_allow_html=True)
+    if res.get("bets_history"):
+        st.dataframe(
+            [
+                {
+                    "Trade #": b["trade_id"],
+                    "Date": b["date"],
+                    "Course": b["course"],
+                    "Horse / Ticker": f"{b['horse']} ({b['ticker']})",
+                    "Odds": f"{b['odds']:.2f}",
+                    "Seabiscuit EV": f"{b['ev_pct']:+.1f}%",
+                    "Stake": f"${b['stake_usd']:.2f}",
+                    "Outcome": b["outcome"],
+                    "Net P/L": f"${b['net_pl_usd']:+,.2f}",
+                    "Cumulative Bankroll": f"${b['bankroll_usd']:,.2f}"
+                }
+                for b in res["bets_history"]
+            ],
+            width="stretch",
+            hide_index=True
+        )
