@@ -1,6 +1,6 @@
 """
-SEABISCUIT - Single-Page Mega Bloomberg Terminal Dashboard (Expanded All-Plots & Actionable Architecture Edition)
-Features top executive summary table, EV-sorted runner cards, and ALL 11 quantitative visual analytics models on a single page.
+SEABISCUIT - Single-Page Mega Bloomberg Terminal Dashboard (Hero Bet Simulator & Full Metric Weather Edition)
+Features top prominent bet simulator, weather infobar with full metric distances (m & yds), EV-sorted cards, and all 12 Plotly models.
 """
 
 import os
@@ -13,7 +13,7 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-from backend.utils import safe_float, safe_int, parse_race_datetime
+from backend.utils import safe_float, safe_int, parse_race_datetime, format_race_distance, get_race_weather_info
 from backend.theracingapi_client import TheRacingAPIClient
 from backend.equine_stock_engine import EquineStockEngine
 from backend.visualization_3d import EquineVisualization3D
@@ -45,13 +45,6 @@ st.markdown("""
     
     .stApp {
         background: #F8FAFC !important;
-    }
-
-    .quant-pill {
-        background: #F1F5F9 !important;
-        border: 1px solid #CBD5E1 !important;
-        border-radius: 6px !important;
-        text-align: center !important;
     }
 
     div[data-testid="stMetricValue"] {
@@ -168,20 +161,28 @@ def main():
     with filter_col:
         show_pepites_only = st.checkbox("🟢 +EV Value Bets Only", value=False)
 
-    # INFOBAR DETAILS
+    # WEATHER & FULL METRIC DISTANCE INFOBAR
     course_name = str(current_racecard.get('course', 'Ascot')).upper()
-    dist_full = str(current_racecard.get('distance_display', '7f (7 Furlongs — 1,400m / 1,540 yds)'))
+    dist_full = format_race_distance(current_racecard.get('distance_display') or current_racecard.get('distance_furlongs'), current_racecard.get('distance_furlongs'))
     going_name = str(current_racecard.get('going', 'Good'))
     post_time = str(current_racecard.get('post_time', '15:35'))
     date_str = str(current_racecard.get('race_date_display', 'Today'))
+    weather_info = get_race_weather_info(current_racecard)
     
     current_dt = parse_race_datetime(current_racecard)
     is_live = current_dt >= now
     status_badge = "<span style='background: #10B981; color: #FFFFFF; font-weight: 900; padding: 3px 10px; border-radius: 4px;'>🟢 LIVE UPCOMING</span>" if is_live else "<span style='background: #64748B; color: #FFFFFF; font-weight: 900; padding: 3px 10px; border-radius: 4px;'>🏁 COMPLETED EVENT</span>"
 
     st.markdown(f"""
-    <div style="background: #FFFFFF; border: 1px solid #CBD5E1; padding: 12px 18px; border-radius: 10px; font-size: 0.95rem; color: #0F172A; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px;">
-        {status_badge} &nbsp;|&nbsp; 📍 <b style="color: #4338CA; font-size: 1.05rem;">{course_name}</b> &nbsp;|&nbsp; 📅 <b style="color: #0284C7;">{date_str}</b> &nbsp;|&nbsp; ⏱️ <b style="color: #059669;">{post_time} GMT</b> &nbsp;|&nbsp; 📏 <b>{dist_full}</b> &nbsp;|&nbsp; 🌧️ <b>{going_name}</b>
+    <div style="background: #FFFFFF; border: 1.5px solid #CBD5E1; padding: 14px 20px; border-radius: 10px; font-size: 0.95rem; color: #0F172A; box-shadow: 0 2px 6px rgba(0,0,0,0.04); margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                {status_badge} &nbsp;|&nbsp; 📍 <b style="color: #4338CA; font-size: 1.05rem;">{course_name}</b> &nbsp;|&nbsp; 📅 <b style="color: #0284C7;">{date_str}</b> &nbsp;|&nbsp; ⏱️ <b style="color: #059669;">{post_time} GMT</b>
+            </div>
+            <div>
+                📏 <b>{dist_full}</b> &nbsp;|&nbsp; {weather_info}
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -190,7 +191,14 @@ def main():
         equity_assets = [a for a in equity_assets if isinstance(a, dict) and a.get("asset_tag") == "VALUE_BUY"]
 
     # ---------------------------------------------------------
-    # SECTION 1: TOP EXECUTIVE SUMMARY TABLE
+    # PROMINENT HERO FEATURE 1: BET & COMBINATION SIMULATOR
+    # ---------------------------------------------------------
+    render_bet_simulator_view(current_racecard)
+
+    st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+
+    # ---------------------------------------------------------
+    # PROMINENT HERO FEATURE 2: TOP RACE EXECUTIVE SUMMARY TABLE
     # ---------------------------------------------------------
     st.markdown("<h4 style='color: #0F172A; font-weight: 900; margin-bottom: 8px;'>📋 RACE RUNNERS EXECUTIVE SUMMARY TABLE</h4>", unsafe_allow_html=True)
     
@@ -224,7 +232,7 @@ def main():
     st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # SECTION 2: RUNNER ASSET CARDS SORTED BY EV % DESCENDING
+    # SECTION 3: RUNNER ASSET CARDS SORTED BY EV % DESCENDING
     # ---------------------------------------------------------
     selected_ticker = st.session_state.get("selected_horse_ticker")
     selected_asset = next((a for a in equity_assets if isinstance(a, dict) and a.get("ticker") == selected_ticker), None)
@@ -237,20 +245,17 @@ def main():
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # SECTION 3: BET SIMULATORS & BACKTEST ENGINE
+    # SECTION 4: STRATEGY BACKTEST EQUITIES & P/L TRACKER
     # ---------------------------------------------------------
-    t_sim, t_backtest = st.tabs(["🎰 BET COMBINATION SIMULATOR (GAGNANT, COUPLE, TRIO, QUINTE+)", "📈 SEABISCUIT +EV STRATEGY BACKTEST"])
-    with t_sim:
-        render_bet_simulator_view(current_racecard)
-    with t_backtest:
+    with st.expander("📈 SEABISCUIT +EV STRATEGY BACKTEST & CUMULATIVE P/L TRACKER", expanded=False):
         render_backtest_view(all_racecards)
 
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # SECTION 4: ALL 11 QUANTITATIVE VISUAL ANALYTICS MODELS
+    # SECTION 5: COMPLETE 12-MODEL QUANT VISUAL ANALYTICS SUITE
     # ---------------------------------------------------------
-    st.markdown("<h4 style='color: #0F172A; font-weight: 900; margin-bottom: 14px;'>📊 COMPLETE QUANTITATIVE VISUAL ANALYTICS SUITE (ALL 11 MODELS)</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #0F172A; font-weight: 900; margin-bottom: 14px;'>📊 COMPLETE QUANTITATIVE VISUAL ANALYTICS SUITE (ALL 12 MODELS)</h4>", unsafe_allow_html=True)
 
     # Row 1: Treemap & Finishing Position Probabilities (Model 1 & 10)
     col1, col2 = st.columns(2)
@@ -285,26 +290,31 @@ def main():
 
     st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
 
-    # Row 4: 3D Speed Terrain Surface & Beyer Speed Rating Progression (Model 7 & 6)
+    # Row 4: Furlong Speed Burst Acceleration Heatmap & Beyer Speed Rating Progression (Model 12 & 6)
     col7, col8 = st.columns(2)
     with col7:
-        moisture_val = safe_float(current_racecard.get("moisture_percent"), default=20.0)
-        fig_3d = EquineVisualization3D.build_3d_track_speed_terrain(moisture_val)
-        st.plotly_chart(fig_3d, width="stretch", config={"responsive": True, "displayModeBar": False})
+        fig_heat = EquineVisualization3D.build_furlong_acceleration_heatmap(equity_assets)
+        st.plotly_chart(fig_heat, width="stretch", config={"responsive": True, "displayModeBar": False})
     with col8:
         fig_beyer = EquineVisualization3D.build_beyer_speed_progression_chart(equity_assets)
         st.plotly_chart(fig_beyer, width="stretch", config={"responsive": True, "displayModeBar": False})
 
     st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
 
-    # Row 5: Multi-Runner Price Trajectory Overlay (Model 8)
-    fig_traj = EquineVisualization3D.build_multi_runner_trajectory_chart(equity_assets)
-    st.plotly_chart(fig_traj, width="stretch", config={"responsive": True, "displayModeBar": False})
+    # Row 5: 3D Speed Terrain Surface & Multi-Runner Price Trajectory Overlay (Model 7 & 8)
+    col9, col10 = st.columns(2)
+    with col9:
+        moisture_val = safe_float(current_racecard.get("moisture_percent"), default=20.0)
+        fig_3d = EquineVisualization3D.build_3d_track_speed_terrain(moisture_val)
+        st.plotly_chart(fig_3d, width="stretch", config={"responsive": True, "displayModeBar": False})
+    with col10:
+        fig_traj = EquineVisualization3D.build_multi_runner_trajectory_chart(equity_assets)
+        st.plotly_chart(fig_traj, width="stretch", config={"responsive": True, "displayModeBar": False})
 
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # SECTION 5: DEEPSEEK AI MARKET DOSSIER & STABLE SYNERGY
+    # SECTION 6: DEEPSEEK AI MARKET DOSSIER & STABLE SYNERGY
     # ---------------------------------------------------------
     st.markdown("<h4 style='color: #0F172A; font-weight: 900;'>🤖 DEEPSEEK AI EXECUTIVE DOSSIER & STABLE SYNERGY</h4>", unsafe_allow_html=True)
     

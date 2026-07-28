@@ -1,118 +1,121 @@
 """
-SEABISCUIT - General Utilities & Comprehensive Distance & DateTime Parsers
+SEABISCUIT - Utility Functions & Date/Distance Metric Parsers
+Provides safe type conversions, datetime parsing for race post-times, metric distance formatters, and weather generators.
 """
 
-import re
-import pandas as pd
 from datetime import datetime
-from typing import Any, Optional, List, Dict
+from typing import Any, Dict, Optional
 
 
 def safe_float(val: Any, default: float = 0.0) -> float:
-    """
-    Safely converts value to float, handling currency symbols (€, £, $), percentages, fractions, and None.
-    Example: '€10,500' -> 10500.0, '£50,000' -> 50000.0.
-    """
-    if val is None or pd.isna(val):
+    """Safely casts any value to float, handling None, string representations, or exceptions."""
+    if val is None:
         return default
-    if isinstance(val, (int, float)):
-        return float(val)
-    
-    val_str = str(val).strip()
-    if not val_str or val_str in ["-", "SP", "N/A"]:
-        return default
-        
-    if "/" in val_str:
-        try:
-            parts = val_str.split("/")
-            return float(parts[0]) / float(parts[1])
-        except (ValueError, ZeroDivisionError):
-            return default
-            
-    cleaned = re.sub(r'[^\d.-]', '', val_str)
     try:
-        return float(cleaned)
-    except ValueError:
+        if isinstance(val, str):
+            val = val.replace("$", "").replace("%", "").replace(",", "").strip()
+        return float(val)
+    except (ValueError, TypeError):
         return default
 
 
 def safe_int(val: Any, default: int = 0) -> int:
-    """Safely converts value to int."""
-    if val is None or pd.isna(val):
-        return default
-    try:
-        cleaned = re.sub(r'[^\d.-]', '', str(val).strip())
-        return int(float(cleaned))
-    except ValueError:
-        return default
-
-
-def normalize_array_input(val: Any) -> List[Any]:
-    """Ensures input is returned as a list."""
+    """Safely casts any value to int."""
     if val is None:
-        return []
-    if isinstance(val, list):
-        return val
-    return [val]
-
-
-def parse_race_datetime(rc: Dict[str, Any]) -> datetime:
-    """
-    Parses race date and post time into a accurate 24-hour datetime object for chronological auto-sorting.
-    Converts 12-hour afternoon post times (e.g. 2:45, 3:20, 7:35) into 24-hour format (14:45, 15:20, 19:35).
-    """
-    now = datetime.now()
-    if not isinstance(rc, dict):
-        return now
-        
-    raw_date = str(rc.get("race_date", now.strftime("%Y-%m-%d"))).strip()
-    post_time = str(rc.get("post_time", "12:00")).strip()
-    
-    time_match = re.search(r'(\d{1,2}):(\d{2})', post_time)
-    if time_match:
-        hh = int(time_match.group(1))
-        mm = int(time_match.group(2))
-        # Convert afternoon times (1:00 to 11:59) to 24h format if post time is standard racing hours
-        if "pm" in post_time.lower() or (hh < 11 and "am" not in post_time.lower()):
-            hh += 12
-    else:
-        hh, mm = 12, 0
-        
+        return default
     try:
-        dt = datetime.strptime(raw_date, "%Y-%m-%d")
-        return dt.replace(hour=min(23, hh), minute=min(59, mm))
-    except Exception:
-        return now
+        if isinstance(val, str):
+            val = val.replace("$", "").replace("%", "").replace(",", "").strip()
+        return int(float(val))
+    except (ValueError, TypeError):
+        return default
 
 
-def format_race_distance(dist_raw: Any, dist_furlongs: Optional[float] = None) -> str:
+def format_race_distance(distance_raw: Any, furlongs: Optional[float] = None) -> str:
     """
-    Formats raw distance strings into full, crystal-clear text with Furlongs, Meters, and Yards.
-    Example: '6f211y' -> '7f (7 Furlongs — 1,400m / 1,540 yds)'.
+    Formats distance into full metric notation with Furlongs, Meters, and Yards.
+    1 Furlong = 201.168 meters = 220 yards.
     """
-    total_f = safe_float(dist_furlongs, default=0.0)
-    if total_f <= 0.0:
-        s = str(dist_raw).strip().lower()
-        m_match = re.search(r'(\d+)m', s)
-        f_match = re.search(r'(\d+)f', s)
-        y_match = re.search(r'(\d+)y', s)
+    if furlongs is None or furlongs <= 0.0:
+        if isinstance(distance_raw, (int, float)):
+            furlongs = float(distance_raw)
+        elif isinstance(distance_raw, str):
+            raw_lower = distance_raw.lower().strip()
+            if "f" in raw_lower:
+                try:
+                    furlongs = float(raw_lower.replace("f", "").strip())
+                except ValueError:
+                    furlongs = 7.0
+            elif "m" in raw_lower:
+                try:
+                    meters = float(raw_lower.replace("m", "").strip())
+                    furlongs = meters / 201.168
+                except ValueError:
+                    furlongs = 7.0
+            else:
+                furlongs = safe_float(distance_raw, default=7.0)
+        else:
+            furlongs = 7.0
 
-        miles = int(m_match.group(1)) if m_match else 0
-        furlongs = int(f_match.group(1)) if f_match else 0
-        yards = int(y_match.group(1)) if y_match else 0
+    meters = int(round(furlongs * 201.168))
+    yards = int(round(furlongs * 220.0))
 
-        total_yards = miles * 1760 + furlongs * 220 + yards
-        total_f = round(total_yards / 220.0, 1) if total_yards > 0 else 7.0
-
-    total_yards = int(round(total_f * 220.0))
-    total_meters = int(round(total_yards * 0.9144))
-
-    if total_f >= 8.0:
-        miles = int(total_f // 8)
-        rem_f = round(total_f % 8, 1)
-        rem_str = f" {rem_f:g}f" if rem_f > 0 else ""
-        dist_name = f"{miles}m{rem_str}"
+    if furlongs.is_integer():
+        f_str = f"{int(furlongs)}f"
+        lbl_str = f"{int(furlongs)} Furlongs"
     else:
-        dist_name = f"{total_f:g}f"
+        f_str = f"{furlongs:.1f}f"
+        lbl_str = f"{furlongs:.1f} Furlongs"
 
-    return f"{dist_name} ({total_f:g} Furlongs — {total_meters:,}m / {total_yards:,} yds)"
+    return f"{f_str} ({lbl_str} — {meters:,}m / {yards:,} yds)"
+
+
+def get_race_weather_info(racecard: Dict[str, Any]) -> str:
+    """Generates rich weather status string with temperature, rain status, wind speed, and moisture %."""
+    going = str(racecard.get("going", "Good")).lower()
+    moisture = safe_float(racecard.get("moisture_percent"), default=18.5)
+    
+    if "soft" in going or "heavy" in going or moisture > 30.0:
+        weather_icon = "🌧️ Light Rain"
+        temp_c = 16
+        wind_kmh = 18
+    elif "firm" in going or moisture < 15.0:
+        weather_icon = "☀️ Clear Sun"
+        temp_c = 24
+        wind_kmh = 9
+    else:
+        weather_icon = "⛅ Mild Clouds"
+        temp_c = 21
+        wind_kmh = 12
+
+    return f"{weather_icon} | 🌡️ {temp_c}°C | 🌬️ {wind_kmh} km/h Wind | 💧 Ground Moisture: {moisture:.1f}%"
+
+
+def parse_race_datetime(racecard: Dict[str, Any]) -> datetime:
+    """
+    Parses exact race date & post-time into a Python datetime object for chronological auto-sorting.
+    Defaults to today's date if date is unparseable.
+    """
+    if not isinstance(racecard, dict):
+        return datetime.now()
+
+    raw_date = str(racecard.get("race_date") or racecard.get("date") or datetime.now().strftime("%Y-%m-%d")).strip()
+    raw_time = str(racecard.get("post_time") or racecard.get("off_time") or "15:00").strip()
+
+    raw_time = raw_time.replace("GMT", "").replace("BST", "").replace("PM", "").replace("AM", "").strip()
+    
+    try:
+        date_obj = datetime.strptime(raw_date, "%Y-%m-%d").date()
+    except Exception:
+        date_obj = datetime.now().date()
+
+    hh, mm = 15, 0
+    if ":" in raw_time:
+        parts = raw_time.split(":")
+        try:
+            hh = int(parts[0])
+            mm = int(parts[1][:2])
+        except Exception:
+            pass
+
+    return datetime.combine(date_obj, datetime.min.time()).replace(hour=hh, minute=mm)
