@@ -466,19 +466,49 @@ def main():
     # ---------------------------------------------------------
     st.markdown("<h4 style='color: #0F172A; font-weight: 900;'>🤖 DEEPSEEK AI EXECUTIVE DOSSIER & STABLE SYNERGY</h4>", unsafe_allow_html=True)
 
-    st.markdown("<h5 style='color: #4338CA; font-weight: 800;'>🤝 JOCKEY x OWNER SYNERGY BREAKDOWN</h5>", unsafe_allow_html=True)
-    try:
-        client = TheRacingAPIClient()
-        jockey_data = client.get_jockey_owner_analysis()
-        owners = jockey_data.get("owners", [])
-
-        st.dataframe(
-            [{"Owner / Stable": o.get("owner", "Owner"), "Rides": safe_int(o.get("rides")), "Wins": safe_int(o.get("1st")), "Win Rate": f"{safe_float(o.get('win_%'))*100:.0f}%", "Value Index (A/E)": safe_float(o.get("a/e")), "1-Unit P/L": f"${safe_float(o.get('1_pl')):+,.2f}"} for o in owners if isinstance(o, dict)],
-            width="stretch",
-            hide_index=True
+    connections_options = [a for a in equity_assets if isinstance(a, dict) and a.get("jockey_id")]
+    if connections_options:
+        sel_label = st.selectbox(
+            "Inspect connections for:",
+            range(len(connections_options)),
+            format_func=lambda i: f"{connections_options[i].get('horse')} — {connections_options[i].get('jockey')} / {connections_options[i].get('trainer')}",
+            key="synergy_runner_select"
         )
-    except Exception:
-        st.info("Jockey & owner synergy data loading.")
+        target = connections_options[sel_label]
+
+        syn_col1, syn_col2 = st.columns(2)
+        with syn_col1:
+            st.markdown(f"<h5 style='color: #4338CA; font-weight: 800;'>🤝 {target.get('jockey')} x OWNER SYNERGY</h5>", unsafe_allow_html=True)
+            try:
+                client = TheRacingAPIClient()
+                jockey_data = client.get_jockey_owner_analysis(target["jockey_id"])
+                owners = jockey_data.get("owners", [])
+                st.dataframe(
+                    [{"Owner / Stable": o.get("owner", "Owner"), "Rides": safe_int(o.get("rides")), "Wins": safe_int(o.get("1st")), "Win Rate": f"{safe_float(o.get('win_%'))*100:.0f}%", "Value Index (A/E)": safe_float(o.get("a/e")), "1-Unit P/L": f"${safe_float(o.get('1_pl')):+,.2f}"} for o in owners if isinstance(o, dict)],
+                    width="stretch",
+                    hide_index=True
+                )
+            except Exception:
+                st.info("Jockey & owner synergy data loading.")
+
+        with syn_col2:
+            st.markdown(f"<h5 style='color: #4338CA; font-weight: 800;'>🤝 {target.get('trainer')} x JOCKEY SYNERGY</h5>", unsafe_allow_html=True)
+            if target.get("trainer_id"):
+                try:
+                    client = TheRacingAPIClient()
+                    trainer_data = client.get_trainer_jockey_analysis(target["trainer_id"])
+                    jockeys = trainer_data.get("jockeys", [])
+                    st.dataframe(
+                        [{"Jockey": j.get("jockey", "Jockey"), "Rides": safe_int(j.get("runners")), "Wins": safe_int(j.get("1st")), "Win Rate": f"{safe_float(j.get('win_%'))*100:.0f}%", "Value Index (A/E)": safe_float(j.get("a/e")), "1-Unit P/L": f"${safe_float(j.get('1_pl')):+,.2f}"} for j in jockeys if isinstance(j, dict)],
+                        width="stretch",
+                        hide_index=True
+                    )
+                except Exception:
+                    st.info("Trainer & jockey synergy data loading.")
+            else:
+                st.info("No trainer ID available for this runner.")
+    else:
+        st.info("No live connections data available for this racecard (synthetic horizon data has no real jockey/trainer IDs).")
 
     st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 

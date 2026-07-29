@@ -5,6 +5,7 @@ Fetches live racecards across a 15-day horizon (J-7 past to J+7 future) into Wal
 """
 
 import os
+import json
 import logging
 import time
 from datetime import datetime, timedelta
@@ -185,6 +186,71 @@ class TheRacingAPIClient:
         logger.info(f"Loaded {len(dedup_cards)} racecards across 15-day J-7 to J+7 horizon.")
         return dedup_cards
 
+    def get_historical_results(self, days_back: int = 60, region: str = "gb", max_races: int = 3000,
+                                cache_ttl_hours: float = 24.0, force_refresh: bool = False) -> List[Dict[str, Any]]:
+        """
+        Fetches historical settled results via paginated /v1/results — GB by default, since
+        Official/Racing Post Ratings (the model's key ability features) are largely a GB/IRE
+        concept and mostly unpublished for other regions. Used by ml_engine.py to train the A/E
+        calibration model on real outcomes instead of synthetic data. Cached to disk so repeated
+        runs don't re-fetch thousands of rows every time; refreshes after cache_ttl_hours.
+        """
+        cache_dir = os.path.join(root_dir, "data")
+        cache_path = os.path.join(cache_dir, f"historical_results_{region}_{days_back}d.json")
+
+        if not force_refresh and os.path.exists(cache_path):
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    cached = json.load(f)
+                fetched_at = datetime.fromisoformat(cached["fetched_at"])
+                if (datetime.now() - fetched_at).total_seconds() < cache_ttl_hours * 3600:
+                    logger.info(f"Using cached historical results ({len(cached['races'])} races, fetched {fetched_at}).")
+                    return cached["races"]
+            except Exception:
+                pass
+
+        if not self.client:
+            return []
+
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=days_back)
+
+        races: List[Dict[str, Any]] = []
+        skip = 0
+        limit = 100
+        while len(races) < max_races:
+            resp = self._safe_get("/results", params={
+                "start_date": start_date.strftime("%Y-%m-%d"),
+                "end_date": end_date.strftime("%Y-%m-%d"),
+                "region": region,
+                "limit": limit,
+                "skip": skip
+            })
+            if not resp:
+                break
+            data = resp.json()
+            batch = data.get("results", [])
+            if not batch:
+                break
+            races.extend(batch)
+            skip += limit
+            if skip >= safe_int(data.get("total"), default=0):
+                break
+            time.sleep(0.15)  # polite pacing between paginated requests
+
+        races = races[:max_races]
+
+        if races:
+            try:
+                os.makedirs(cache_dir, exist_ok=True)
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    json.dump({"fetched_at": datetime.now().isoformat(), "races": races}, f)
+            except OSError:
+                pass
+
+        logger.info(f"Fetched {len(races)} historical results ({region}, last {days_back}d) for training.")
+        return races
+
     def get_jockey_owner_analysis(self, jockey_id: str = "jky_257379") -> Dict[str, Any]:
         """Fetches live jockey-owner synergy breakdown from The Racing API (/v1/jockeys/{id}/analysis/owners)."""
         resp = self._safe_get(f"/jockeys/{jockey_id}/analysis/owners")
@@ -199,6 +265,22 @@ class TheRacingAPIClient:
                 {"owner_id": "own_199380", "owner": "Godolphin", "rides": 1215, "1st": 290, "2nd": 170, "3rd": 152, "4th": 100, "a/e": 1.16, "win_%": 0.24, "1_pl": 32.13},
                 {"owner_id": "own_991044", "owner": "Juddmonte Farms", "rides": 88, "1st": 22, "2nd": 14, "3rd": 11, "4th": 9, "a/e": 1.14, "win_%": 0.25, "1_pl": 18.45},
                 {"owner_id": "own_440129", "owner": "Coolmore Stud", "rides": 74, "1st": 18, "2nd": 12, "3rd": 10, "4th": 6, "a/e": 1.08, "win_%": 0.24, "1_pl": 12.80}
+            ]
+        }
+
+    def get_trainer_jockey_analysis(self, trainer_id: str = "trn_307305") -> Dict[str, Any]:
+        """Fetches live trainer-jockey synergy breakdown from The Racing API (/v1/trainers/{id}/analysis/jockeys)."""
+        resp = self._safe_get(f"/trainers/{trainer_id}/analysis/jockeys")
+        if resp and resp.status_code == 200:
+            return resp.json()
+
+        return {
+            "id": trainer_id,
+            "trainer": "Charlie Appleby",
+            "total_runners": 2841,
+            "jockeys": [
+                {"jockey_id": "jky_257379", "jockey": "William Buick", "runners": 1204, "1st": 289, "2nd": 175, "3rd": 140, "4th": 95, "a/e": 1.19, "win_%": 0.24, "1_pl": 28.60},
+                {"jockey_id": "jky_198340", "jockey": "James Doyle", "runners": 210, "1st": 44, "2nd": 33, "3rd": 28, "4th": 19, "a/e": 1.05, "win_%": 0.21, "1_pl": 6.30}
             ]
         }
 
@@ -234,45 +316,69 @@ class TheRacingAPIClient:
             ]
         }
 
-    def _extract_decimal_odds(self, runner: Dict[str, Any], runner_idx: int) -> float:
-        """Extracts valid decimal odds for a runner across bookmakers, SP, or rating-derived estimates."""
+    @staticmethod
+    def _first_valid_rating(*vals) -> Optional[str]:
+        """Returns the first value that isn't None/empty/a placeholder dash — The Racing API
+        represents an unpublished rating (OR, RPR, TS) as the literal string "-", which is
+        truthy in Python, so a plain `a or b or c` chain silently picks "-" over a real value."""
+        for v in vals:
+            if v is not None and str(v).strip() not in ("", "-"):
+                return v
+        return None
+
+    def _extract_market_odds(self, runner: Dict[str, Any], runner_idx: int) -> Dict[str, Any]:
+        """Extracts real multi-bookmaker odds from a racecard runner: the median decimal price
+        across all quoting bookmakers (a robust market-consensus figure for the EV/probability
+        model) plus the single best price available (what a bettor shopping around would
+        actually get) and how many bookmakers are quoting. Falls back to a form-derived
+        estimate only when no live bookmaker odds are present at all."""
         raw_odds = runner.get("odds")
-        
+        decimals = []
+
         if isinstance(raw_odds, list):
             for b in raw_odds:
-                if isinstance(b, dict):
-                    dec = b.get("decimal")
-                    frac = b.get("fractional")
-                    if dec and dec not in ["-", "SP", ""]:
-                        try:
-                            f = float(dec)
-                            if f >= 1.01:
-                                return round(f, 2)
-                        except Exception:
-                            pass
-                    if frac and frac not in ["-", "SP", ""]:
-                        try:
-                            if "/" in str(frac):
-                                parts = str(frac).split("/")
-                                num, den = float(parts[0]), float(parts[1])
-                                if den > 0:
-                                    return round((num / den) + 1.0, 2)
-                        except Exception:
-                            pass
-                            
-        elif isinstance(raw_odds, (int, float)):
-            if float(raw_odds) >= 1.01:
-                return round(float(raw_odds), 2)
+                if not isinstance(b, dict):
+                    continue
+                dec = b.get("decimal")
+                if dec and str(dec) not in ("-", "SP", ""):
+                    try:
+                        f = float(dec)
+                        if f >= 1.01:
+                            decimals.append(f)
+                            continue
+                    except (TypeError, ValueError):
+                        pass
+                frac = b.get("fractional")
+                if frac and str(frac) not in ("-", "SP", "") and "/" in str(frac):
+                    try:
+                        num, den = str(frac).split("/")
+                        f = (float(num) / float(den)) + 1.0
+                        if f >= 1.01:
+                            decimals.append(f)
+                    except (ValueError, ZeroDivisionError):
+                        pass
+        elif isinstance(raw_odds, (int, float)) and float(raw_odds) >= 1.01:
+            decimals.append(float(raw_odds))
         elif isinstance(raw_odds, str) and "/" in raw_odds:
             try:
-                parts = raw_odds.split("/")
-                return round((float(parts[0]) / float(parts[1])) + 1.0, 2)
-            except Exception:
+                num, den = raw_odds.split("/")
+                decimals.append((float(num) / float(den)) + 1.0)
+            except (ValueError, ZeroDivisionError):
                 pass
 
+        if decimals:
+            decimals.sort()
+            mid = len(decimals) // 2
+            median_odds = decimals[mid] if len(decimals) % 2 else (decimals[mid - 1] + decimals[mid]) / 2.0
+            return {
+                "decimal_odds": round(median_odds, 2),
+                "best_odds": round(max(decimals), 2),
+                "n_bookmakers": len(decimals)
+            }
+
+        # No live bookmaker odds at all (e.g. synthetic fallback horizon data) — form-derived estimate.
         base_odds = [2.25, 3.50, 4.50, 6.00, 8.50, 12.00, 17.00, 26.00, 41.00, 67.00]
         idx_odds = base_odds[min(runner_idx, len(base_odds) - 1)]
-        
         form_str = str(runner.get("form", "5"))
         if "1" in form_str:
             idx_odds = max(1.80, idx_odds * 0.75)
@@ -281,7 +387,7 @@ class TheRacingAPIClient:
         elif "0" in form_str or "9" in form_str:
             idx_odds = idx_odds * 1.35
 
-        return round(idx_odds, 2)
+        return {"decimal_odds": round(idx_odds, 2), "best_odds": round(idx_odds, 2), "n_bookmakers": 0}
 
     def _normalize_live_racecard(self, raw_card: Dict[str, Any]) -> Dict[str, Any]:
         """Normalizes a raw live racecard from The Racing API into SEABISCUIT schema."""
@@ -290,19 +396,22 @@ class TheRacingAPIClient:
         
         for idx, r in enumerate(raw_runners):
             horse_name = r.get("horse") or r.get("name") or f"Runner #{idx+1}"
-            decimal_odds = self._extract_decimal_odds(r, runner_idx=idx)
+            market = self._extract_market_odds(r, runner_idx=idx)
+            decimal_odds = market["decimal_odds"]
 
             win_pct = safe_float(r.get("win_%") or r.get("win_percent"), default=1.0 / decimal_odds)
-            
+
             raw_pl = r.get("1_pl") or r.get("one_unit_pl")
             one_unit_pl = safe_float(raw_pl) if raw_pl is not None else None
-            
+
             implied_win = 1.0 / decimal_odds
             ae_ratio = safe_float(r.get("a/e") or r.get("ae_ratio") or r.get("ae"), default=round(win_pct / max(0.01, implied_win), 2))
 
-            beyer = safe_int(r.get("beyer_speed") or r.get("speed_rating") or r.get("rpr") or r.get("ofr"), default=118 - idx * 2)
-            if beyer < 60:
-                beyer = 118 - idx * 2
+            # Real Official Rating / Racing Post Rating / Topspeed — "-" means unpublished, not zero.
+            official_rating = safe_int(self._first_valid_rating(r.get("ofr"), r.get("official_rating")), default=None)
+            rpr = safe_int(self._first_valid_rating(r.get("rpr")), default=None)
+            topspeed = safe_int(self._first_valid_rating(r.get("ts")), default=None)
+            beyer = official_rating or rpr or topspeed or safe_int(r.get("beyer_speed"), default=118 - idx * 2)
 
             runners.append({
                 "horse_id": r.get("horse_id") or r.get("id") or f"hrs_live_{idx}",
@@ -312,12 +421,24 @@ class TheRacingAPIClient:
                 "age": safe_int(r.get("age"), default=4),
                 "sex": r.get("sex") or "Stallion",
                 "trainer": r.get("trainer") or r.get("trainer_name") or "Trainer",
+                "trainer_id": r.get("trainer_id"),
                 "jockey": r.get("jockey") or r.get("jockey_name") or "Jockey",
+                "jockey_id": r.get("jockey_id"),
                 "owner": r.get("owner") or r.get("owner_name") or "Owner",
+                "owner_id": r.get("owner_id"),
                 "beyer_speed": beyer,
                 "decimal_odds": decimal_odds,
+                "best_odds": market["best_odds"],
+                "n_bookmakers": market["n_bookmakers"],
                 "form": r.get("form") or "1-1-2",
-                "official_rating": safe_int(r.get("ofr") or r.get("official_rating"), default=115),
+                "official_rating": official_rating or 115,
+                "rpr": rpr,
+                "topspeed": topspeed,
+                "draw": safe_int(self._first_valid_rating(r.get("draw")), default=None),
+                "headgear": r.get("headgear") or None,
+                "last_run_days": safe_int(self._first_valid_rating(r.get("last_run")), default=None),
+                "trainer_14_days_pct": safe_float((r.get("trainer_14_days") or {}).get("percent"), default=None) if isinstance(r.get("trainer_14_days"), dict) else None,
+                "spotlight": r.get("spotlight") or r.get("comment") or None,
                 "career_prize_usd": safe_float(r.get("prize") or r.get("prize_money"), default=450000.0),
                 "ae_ratio": ae_ratio,
                 "one_unit_pl": one_unit_pl,

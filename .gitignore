@@ -25,3 +25,6 @@ Thumbs.db
 # Logs / temp
 *.log
 .pytest_cache/
+
+# Cached API data (regenerated on demand, see theracingapi_client.get_historical_results)
+/data/

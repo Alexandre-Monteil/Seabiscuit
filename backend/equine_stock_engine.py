@@ -5,6 +5,7 @@ Actual/Expected (A/E) alpha ratios, 1-Unit P/L calculations, and Fractional Kell
 """
 
 from typing import Dict, List, Any
+import statistics
 import numpy as np
 
 try:
@@ -41,20 +42,23 @@ class EquineStockEngine:
         return round(max(0.0, min(0.25, half_kelly)) * 100.0, 1)
 
     @classmethod
-    def calculate_stock_metrics(cls, runner: Dict[str, Any], race_pool_usd: float = 2000000.0, runner_idx: int = 0, total_runners: int = 8) -> Dict[str, Any]:
+    def calculate_stock_metrics(cls, runner: Dict[str, Any], race_pool_usd: float = 2000000.0, runner_idx: int = 0,
+                                 total_runners: int = 8, field_or_mean: float = 90.0, field_or_std: float = 8.0) -> Dict[str, Any]:
         """Calculates institutional quantitative stock metrics for an equine asset with relative multiplicative A/E scaling."""
         decimal_odds = max(1.01, safe_float(runner.get("decimal_odds"), default=4.0))
-        
+
         share_price = round(min(99.00, max(1.01, 100.0 / decimal_odds)), 2)
         implied_win_pct = round((1.0 / decimal_odds) * 100.0, 2)
         implied_win_prob = 1.0 / decimal_odds
         market_cap = round(race_pool_usd * (share_price / 100.0), 2)
-        
+
         beyer_speed = safe_int(runner.get("beyer_speed"), default=112 - runner_idx * 2)
 
-        # A/E alpha ratio from the XGBoost calibration model (backend/ml_engine.py),
-        # strictly bounded within realistic quantitative hedge fund range [0.75, 1.35]
-        ae_ratio = EquineWinProbabilityModel.predict_ae_ratio(runner)
+        # A/E alpha ratio from the XGBoost calibration model (backend/ml_engine.py), trained on
+        # real settled results when reachable — strictly bounded to [0.75, 1.35].
+        ae_ratio = EquineWinProbabilityModel.predict_ae_ratio(
+            runner, field_or_mean=field_or_mean, field_or_std=field_or_std, field_size=total_runners
+        )
         
         # Empirical Win Prob = Implied Win Prob * A/E Ratio
         empirical_win_prob = round(min(0.92, max(0.01, implied_win_prob * ae_ratio)), 4)
@@ -98,8 +102,11 @@ class EquineStockEngine:
             "age": safe_int(runner.get("age"), default=4),
             "sex": runner.get("sex", "Stallion"),
             "trainer": runner.get("trainer", "Trainer"),
+            "trainer_id": runner.get("trainer_id"),
             "jockey": runner.get("jockey", "Jockey"),
+            "jockey_id": runner.get("jockey_id"),
             "owner": runner.get("owner", "Owner"),
+            "owner_id": runner.get("owner_id"),
             "form": runner.get("form", "1-1-2"),
             "share_price_usd": share_price,
             "decimal_odds": decimal_odds,
@@ -119,6 +126,11 @@ class EquineStockEngine:
             "card_label": card_label,
             "tag_expl": tag_expl,
             "official_rating": safe_int(runner.get("official_rating"), default=115),
+            "draw": runner.get("draw"),
+            "headgear": runner.get("headgear"),
+            "best_odds": safe_float(runner.get("best_odds"), default=decimal_odds),
+            "n_bookmakers": safe_int(runner.get("n_bookmakers"), default=0),
+            "spotlight": runner.get("spotlight"),
             "career_prize_usd": safe_float(runner.get("career_prize_usd"), default=450000.0),
             "past_places": runner.get("past_places", [])
         }
@@ -129,10 +141,20 @@ class EquineStockEngine:
         prize_money = safe_float(racecard.get("prize_money_usd"), default=1000000.0)
         runners = racecard.get("runners", [])
         total_r = len(runners)
-        
+
+        # Field-relative Official Rating stats, computed once so the A/E model can score each
+        # runner against the field it's actually racing in rather than a fixed global benchmark.
+        or_values = [safe_float(r.get("official_rating"), default=None) for r in runners]
+        or_values = [v for v in or_values if v is not None]
+        field_or_mean = statistics.mean(or_values) if or_values else 90.0
+        field_or_std = statistics.pstdev(or_values) if len(or_values) > 1 else 8.0
+
         processed_runners = []
         for idx, r in enumerate(runners):
-            stock = cls.calculate_stock_metrics(r, race_pool_usd=prize_money * 1.5, runner_idx=idx, total_runners=total_r)
+            stock = cls.calculate_stock_metrics(
+                r, race_pool_usd=prize_money * 1.5, runner_idx=idx, total_runners=total_r,
+                field_or_mean=field_or_mean, field_or_std=field_or_std
+            )
             stock["odds_timeline"] = cls.generate_odds_timeline(stock["share_price_usd"])
             processed_runners.append(stock)
 
