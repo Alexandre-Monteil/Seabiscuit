@@ -114,7 +114,6 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Outfit', 'Inter', sans-serif !important; 
 
 /* ── Table Enhancements ── */
 table { font-family: 'Inter', sans-serif !important; }
-table thead tr { position: sticky; top: 0; z-index: 1; }
 table tbody tr { transition: background-color 0.18s ease; }
 table tbody tr:hover { background-color: rgba(99,102,241,0.04) !important; }
 
@@ -477,27 +476,25 @@ def main():
     # SECTION 6: DEEPSEEK AI MARKET DOSSIER & STABLE SYNERGY
     # ---------------------------------------------------------
     st.markdown("<h4 style='color: #0F172A; font-weight: 900;'>🤖 DEEPSEEK AI EXECUTIVE DOSSIER & STABLE SYNERGY</h4>", unsafe_allow_html=True)
-    
-    intel_col1, intel_col2 = st.columns(2)
-    
-    with intel_col1:
-        st.markdown("<h5 style='color: #4338CA; font-weight: 800;'>🤝 JOCKEY x OWNER SYNERGY BREAKDOWN</h5>", unsafe_allow_html=True)
-        try:
-            client = TheRacingAPIClient()
-            jockey_data = client.get_jockey_owner_analysis()
-            owners = jockey_data.get("owners", [])
-            
-            st.dataframe(
-                [{"Owner / Stable": o.get("owner", "Owner"), "Rides": safe_int(o.get("rides")), "Wins": safe_int(o.get("1st")), "Win Rate": f"{safe_float(o.get('win_%'))*100:.0f}%", "Value Index (A/E)": safe_float(o.get("a/e")), "1-Unit P/L": f"${safe_float(o.get('1_pl')):+,.2f}"} for o in owners if isinstance(o, dict)],
-                width="stretch",
-                hide_index=True
-            )
-        except Exception:
-            st.info("Jockey & owner synergy data loading.")
 
-    with intel_col2:
-        with st.expander("🤖 GENERATE DEEPSEEK AI EXECUTIVE INTEL DOSSIER", expanded=True):
-            render_intel_dossier_modal(current_racecard)
+    st.markdown("<h5 style='color: #4338CA; font-weight: 800;'>🤝 JOCKEY x OWNER SYNERGY BREAKDOWN</h5>", unsafe_allow_html=True)
+    try:
+        client = TheRacingAPIClient()
+        jockey_data = client.get_jockey_owner_analysis()
+        owners = jockey_data.get("owners", [])
+
+        st.dataframe(
+            [{"Owner / Stable": o.get("owner", "Owner"), "Rides": safe_int(o.get("rides")), "Wins": safe_int(o.get("1st")), "Win Rate": f"{safe_float(o.get('win_%'))*100:.0f}%", "Value Index (A/E)": safe_float(o.get("a/e")), "1-Unit P/L": f"${safe_float(o.get('1_pl')):+,.2f}"} for o in owners if isinstance(o, dict)],
+            width="stretch",
+            hide_index=True
+        )
+    except Exception:
+        st.info("Jockey & owner synergy data loading.")
+
+    st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+
+    with st.expander("🤖 GENERATE DEEPSEEK AI EXECUTIVE INTEL DOSSIER", expanded=True):
+        render_intel_dossier_modal(current_racecard)
 
     st.markdown("---")
     st.caption("⚡ **SEABISCUIT SINGLE-PAGE MEGA BLOOMBERG TERMINAL** | Live Racing API Analytics & AI Intelligence.")
