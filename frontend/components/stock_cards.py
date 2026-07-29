@@ -11,6 +11,8 @@ try:
 except (ImportError, ValueError):
     from backend.utils import safe_float, safe_int
 
+from frontend.html_utils import compact_html
+
 
 def render_stock_asset_cards(equity_assets: List[Dict[str, Any]]):
     """Renders runner cards sorted strictly by EV % descending with crystal-clear actionable labels."""
@@ -143,7 +145,7 @@ def render_stock_asset_cards(equity_assets: List[Dict[str, Any]]):
 """
 
         with col:
-            st.markdown(card_html, unsafe_allow_html=True)
+            st.markdown(compact_html(card_html), unsafe_allow_html=True)
             if st.button(f"🔍 Open Full Quant Analysis ({ticker})", key=f"btn_inspect_{ticker}_{idx}", use_container_width=True):
                 st.session_state["selected_horse_ticker"] = ticker
                 st.rerun()

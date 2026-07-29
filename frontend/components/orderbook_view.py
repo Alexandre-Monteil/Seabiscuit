@@ -9,18 +9,19 @@ import pandas as pd
 from typing import Dict, Any
 
 from backend.bet_simulator_engine import QuantBetSimulatorEngine
+from frontend.html_utils import compact_html
 
 
 def render_orderbook_view(racecard: Dict[str, Any]) -> None:
     """Renders live Equine Orderbook & CLOB microstructure."""
-    st.markdown("""
+    st.markdown(compact_html("""
     <div class="glass-card" style="border-top:4px solid #0F172A;padding:18px 24px;margin-bottom:18px;animation:slideInLeft 0.4s ease;">
         <h3 style="color:#0F172A;margin:0;font-weight:900;font-family:'Outfit',sans-serif;">📊 INSTITUTIONAL EQUINE ORDERBOOK &amp; CLOB MICROSTRUCTURE</h3>
         <p style="color:var(--text-muted,#64748B);margin:4px 0 0;font-size:0.88rem;font-weight:600;">
             Synthetic L2 depth: spread widens with longer odds &amp; A/E mispricing, liquidity scales with market cap.
         </p>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     assets = racecard.get("equity_assets", [])
     if not assets:

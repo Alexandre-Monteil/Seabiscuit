@@ -41,6 +41,7 @@ from frontend.components.bet_simulator_view import render_bet_simulator_view
 from frontend.components.backtest_view import render_backtest_view
 from frontend.components.orderbook_view import render_orderbook_view
 from frontend.components.portfolio_view import render_portfolio_view
+from frontend.html_utils import compact_html
 
 # Streamlit Page Setup
 st.set_page_config(
@@ -267,7 +268,7 @@ def main():
     live_cls = "live-pulse" if is_live else ""
     status_badge = f"<span class='{live_cls}' style='background: #10B981; color: #FFFFFF; font-weight: 900; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem;'>🟢 LIVE UPCOMING</span>" if is_live else "<span style='background: #64748B; color: #FFFFFF; font-weight: 900; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem;'>🏁 COMPLETED EVENT</span>"
 
-    st.markdown(f"""
+    st.markdown(compact_html(f"""
     <div class="glass-card" style="padding: 16px 22px; margin-bottom: 18px; animation: slideInLeft 0.5s ease;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.92rem; color: var(--text-primary);">
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
@@ -286,7 +287,7 @@ def main():
             </div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     equity_assets = current_racecard.get("equity_assets", [])
     if show_pepites_only:
@@ -370,7 +371,7 @@ def main():
     </div>
     """
 
-    st.markdown(table_html, unsafe_allow_html=True)
+    st.markdown(compact_html(table_html), unsafe_allow_html=True)
 
     st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
 

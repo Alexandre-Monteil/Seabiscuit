@@ -3,11 +3,12 @@ SEABISCUIT - Ultra-Compact Top Bar Navigation (Premium High-Clarity Light Theme)
 """
 
 import streamlit as st
+from frontend.html_utils import compact_html
 
 
 def render_top_nav() -> None:
     """Renders a slim, compact top toolbar with exact requested header wording."""
-    st.markdown("""
+    st.markdown(compact_html("""
     <div class="glass-card" style="padding: 12px 22px; margin-bottom: 18px; border-bottom: 3px solid #6366F1; animation: slideInLeft 0.4s ease;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div style="display: flex; align-items: center; gap: 14px;">
@@ -23,4 +24,4 @@ def render_top_nav() -> None:
             </div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)

@@ -5,18 +5,15 @@ SEABISCUIT - Horse Equine Asset Detail View (Ichimoku Cloud & Technical Analytic
 import streamlit as st
 from typing import Dict, Any
 from backend.visualization_3d import EquineVisualization3D
+from frontend.html_utils import compact_html
 
 
 def render_horse_detail_view(asset: Dict[str, Any], racecard: Dict[str, Any]) -> None:
     """Renders deep technical equity dossier overlay with Ichimoku Cloud & 6D Radar."""
-    st.markdown("""
-    <div class="glass-card" style="border-top: 4px solid #6366F1; padding: 20px; margin-bottom: 20px; animation: fadeIn 0.5s ease;">
-    """, unsafe_allow_html=True)
-
     d_col1, d_col2 = st.columns([3, 1])
 
     with d_col1:
-        st.markdown(f"""
+        st.markdown(compact_html(f"""
         <div style="background: linear-gradient(90deg, rgba(248,250,252,0.9) 0%, rgba(238,242,255,0.9) 100%); padding: 14px 18px; border-radius: 10px; border-left: 4px solid #6366F1; margin-bottom: 8px; backdrop-filter: blur(6px);">
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px; flex-wrap: wrap;">
                 <h3 style="color: var(--text-primary, #0F172A); font-weight: 900; margin: 0; font-size: 1.6rem; letter-spacing: -0.5px; font-family: 'Outfit', sans-serif;">
@@ -30,7 +27,7 @@ def render_horse_detail_view(asset: Dict[str, Any], racecard: Dict[str, Any]) ->
                 Pedigree: <span style="color: var(--text-secondary, #334155); font-weight: 800;">{asset.get('sire')}</span> × <span style="color: var(--text-secondary, #334155); font-weight: 800;">{asset.get('dam')}</span>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
 
     with d_col2:
         if st.button("❌ CLOSE DOSSIER", key="btn_close_dossier", use_container_width=True):
@@ -47,5 +44,3 @@ def render_horse_detail_view(asset: Dict[str, Any], racecard: Dict[str, Any]) ->
     with chart_col2:
         fig_radar = EquineVisualization3D.build_6d_equine_quant_radar(asset)
         st.plotly_chart(fig_radar, width="stretch", config={"responsive": True, "displayModeBar": False})
-
-    st.markdown("</div>", unsafe_allow_html=True)

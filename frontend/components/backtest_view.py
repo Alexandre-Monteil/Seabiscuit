@@ -8,6 +8,7 @@ import streamlit as st
 
 from backend.backtest_engine import EquineBacktestEngine
 from backend.visualization_3d import EquineVisualization3D
+from frontend.html_utils import compact_html
 
 
 def render_backtest_view(all_racecards: List[Dict[str, Any]]):
@@ -16,12 +17,12 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
         st.info("No racecard data available for backtesting.")
         return
 
-    st.markdown("""
+    st.markdown(compact_html("""
     <div class="glass-card" style="border-top: 4px solid var(--accent-emerald, #10B981); padding: 18px 24px; margin-bottom: 20px; animation: fadeIn 0.5s ease;">
         <h3 style="color: #047857; margin-top: 0; font-weight: 900; font-family: 'Outfit', sans-serif;">📈 SEABISCUIT +EV ALPHA STRATEGY BACKTEST & P/L TRACKER</h3>
         <p style="color: var(--text-muted, #475569); font-size: 0.92rem; margin-bottom: 0; font-weight: 600;">Empirical performance simulation of strictly placing bets on Seabiscuit 🟢 +EV Golden Nuggets across all completed races.</p>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     b_col1, b_col2 = st.columns([1, 3])
     with b_col1:

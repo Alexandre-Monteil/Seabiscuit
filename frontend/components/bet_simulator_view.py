@@ -7,6 +7,7 @@ from typing import Dict, Any
 import streamlit as st
 from backend.bet_simulator_engine import QuantBetSimulatorEngine
 from backend.utils import safe_float
+from frontend.html_utils import compact_html
 
 
 def _bet_slip_card(label: str, accent: str, payout: float, profit: float,
@@ -27,7 +28,7 @@ def _bet_slip_card(label: str, accent: str, payout: float, profit: float,
                 </div>"""
         extra_html = f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">{grid_items}</div>'
 
-    return f"""
+    return compact_html(f"""
     <div class="glass-card" style="border-top:5px solid {accent};padding:20px;position:relative;animation:fadeIn 0.5s ease;">
         <div style="position:absolute;top:10px;right:10px;background:{accent_bg};color:{accent};padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:800;">{label}</div>
         <div style="font-size:0.72rem;color:#64748B;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;">Projected Payout</div>
@@ -38,14 +39,14 @@ def _bet_slip_card(label: str, accent: str, payout: float, profit: float,
             <span style="font-size:0.95rem;font-weight:900;color:{ev_color};font-family:'JetBrains Mono',monospace;">{ev_pct:+.1f}%</span>
         </div>
         {extra_html}
-    </div>"""
+    </div>""")
 
 
 def _quinte_slip(payout: float, profit: float, ev_pct: float,
                  prob_pct: float) -> str:
     """Dark-theme Quinté+ jackpot card."""
     ev_color = "#10B981" if ev_pct > 0 else "#F43F5E"
-    return f"""
+    return compact_html(f"""
     <div style="background:linear-gradient(135deg,#1E293B 0%,#0F172A 100%);border-top:6px solid #EAB308;border-radius:14px;padding:28px;box-shadow:0 12px 30px rgba(0,0,0,0.2);margin-top:12px;text-align:center;animation:fadeIn 0.5s ease;">
         <div style="font-size:0.78rem;color:#94A3B8;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;">Projected Quinté+ Jackpot</div>
         <div style="font-size:3.8rem;font-weight:900;color:#FDE047;font-family:'JetBrains Mono',monospace;margin:8px 0;text-shadow:0 0 24px rgba(234,179,8,0.35);">${payout:,.2f}</div>
@@ -59,7 +60,7 @@ def _quinte_slip(payout: float, profit: float, ev_pct: float,
                 <div style="font-size:1.15rem;font-weight:900;color:{ev_color};font-family:'JetBrains Mono',monospace;">{ev_pct:+.1f}%</div>
             </div>
         </div>
-    </div>"""
+    </div>""")
 
 
 def render_bet_simulator_view(racecard: Dict[str, Any]):
@@ -73,7 +74,7 @@ def render_bet_simulator_view(racecard: Dict[str, Any]):
         return
 
     # Hero header
-    st.markdown("""
+    st.markdown(compact_html("""
     <div class="glass-card" style="border-top:4px solid #0EA5E9;padding:18px 24px;margin-bottom:18px;animation:slideInLeft 0.4s ease;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
             <div>
@@ -89,7 +90,7 @@ def render_bet_simulator_view(racecard: Dict[str, Any]):
             </div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """), unsafe_allow_html=True)
 
     runner_labels = [
         f"#{i+1} {r.get('horse','Runner')} (Odds: {safe_float(r.get('decimal_odds'),4.0):.2f})"
