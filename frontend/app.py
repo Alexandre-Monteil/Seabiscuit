@@ -39,8 +39,6 @@ from frontend.components.horse_detail_view import render_horse_detail_view
 from frontend.components.intel_modal import render_intel_dossier_modal
 from frontend.components.bet_simulator_view import render_bet_simulator_view
 from frontend.components.backtest_view import render_backtest_view
-from frontend.components.orderbook_view import render_orderbook_view
-from frontend.components.portfolio_view import render_portfolio_view
 from frontend.html_utils import compact_html
 
 # Streamlit Page Setup
@@ -393,16 +391,6 @@ def main():
     # ---------------------------------------------------------
     with st.expander("📈 SEABISCUIT +EV STRATEGY BACKTEST & CUMULATIVE P/L TRACKER", expanded=False):
         render_backtest_view(all_racecards)
-
-    st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
-
-    with st.expander("📊 ORDERBOOK & MARKET DEPTH (L2 CLOB MICROSTRUCTURE)", expanded=False):
-        render_orderbook_view(current_racecard)
-
-    st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
-
-    with st.expander("💼 MY HORSE STOCK TRADING PORTFOLIO", expanded=False):
-        render_portfolio_view(equity_assets)
 
     st.markdown("---")
 
