@@ -26,8 +26,21 @@ class SeabiscuitBetGenerator:
     LLM judgment instead of the heuristic proxy.
     """
 
-    MIN_EV_PCT_TO_BET = 0.0
+    # Any EV > 0% used to qualify, which let pure model noise (a fraction of a percent) trigger
+    # bets. Real markets charge a takeout/vig, so a signal needs enough margin to survive being
+    # slightly wrong. The real-data-trained model's output is coarse-grained (bin-calibrated,
+    # shallow trees) and currently tops out around 3% EV for sanely-priced runners in typical
+    # data — so 2.0% is selective without colliding with that ceiling.
+    MIN_EV_PCT_TO_BET = 2.0
     DOMINANT_WIN_GAP_PCT = 15.0
+
+    # EV = p * odds - 1 is multiplicative: at long odds, a small, ordinary A/E miscalibration
+    # (the model is only ever accurate to within some margin) turns into a huge apparent EV%
+    # purely from the odds multiplier, not genuine value — and the well-documented
+    # favourite-longshot bias says longshots are structurally OVER-priced by the market, not
+    # under-priced, so apparent "value" way out in the odds is the least trustworthy kind.
+    # Runners priced longer than this are excluded from consideration entirely.
+    MAX_ODDS_TO_BET = 20.0
 
     @classmethod
     def _qualitative_confidence(cls, runner: Dict[str, Any]) -> float:
@@ -50,9 +63,15 @@ class SeabiscuitBetGenerator:
         assets = [a for a in racecard.get("equity_assets", []) if isinstance(a, dict)]
         if len(assets) < 2:
             return None
+        n = len(assets)  # full field size — used below to gauge how open/deep the race is
+
+        # Exclude longshots from consideration entirely (see MAX_ODDS_TO_BET) before ranking.
+        sane_pool = [a for a in assets if safe_float(a.get("decimal_odds"), default=999.0) <= cls.MAX_ODDS_TO_BET]
+        if not sane_pool:
+            return None
 
         ranked = sorted(
-            assets,
+            sane_pool,
             key=lambda a: safe_float(a.get("expected_value_pct") or (safe_float(a.get("expected_value")) * 100.0), default=-99.0),
             reverse=True
         )
@@ -62,11 +81,10 @@ class SeabiscuitBetGenerator:
         if ev1 <= cls.MIN_EV_PCT_TO_BET:
             return None
 
-        n = len(ranked)
         qual_confidence = qual_confidence_override if qual_confidence_override is not None else cls._qualitative_confidence(top1)
 
         win1 = safe_float(top1.get("mc_win_pct"), default=safe_float(top1.get("win_percent"), 0.0) * 100.0)
-        win2 = safe_float(ranked[1].get("mc_win_pct"), default=safe_float(ranked[1].get("win_percent"), 0.0) * 100.0)
+        win2 = safe_float(ranked[1].get("mc_win_pct"), default=safe_float(ranked[1].get("win_percent"), 0.0) * 100.0) if len(ranked) >= 2 else 0.0
         win_gap = win1 - win2
 
         positive_ev_count = sum(
@@ -89,12 +107,12 @@ class SeabiscuitBetGenerator:
         # an edge — a deep, competitive field with several positive-EV runners suits a
         # Quinté+, a narrower edge suits a Duo, and a single standout without a big enough
         # gap to call "dominant" still just backs that runner to win.
-        elif n >= 8 and positive_ev_count >= 3 and qual_confidence >= 55.0:
+        elif n >= 8 and len(ranked) >= 5 and positive_ev_count >= 3 and qual_confidence >= 55.0:
             bet_type = "QUINTE"
             runners = ranked[:5]
             rationale = (f"Large, competitive field ({n} runners) with {positive_ev_count} runners showing "
                          f"edge and reasonable model confidence ({qual_confidence:.0f}/100) — Quinté+ on the top 5.")
-        elif n >= 3 and positive_ev_count >= 2:
+        elif n >= 3 and len(ranked) >= 2 and positive_ev_count >= 2:
             bet_type = "DUO"
             runners = ranked[:2]
             rationale = (f"{top1.get('horse')} and {ranked[1].get('horse')} are close in model win share "

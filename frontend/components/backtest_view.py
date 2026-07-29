@@ -28,12 +28,13 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
     b_col1, b_col2 = st.columns([1, 3])
     with b_col1:
         initial_capital = st.number_input("Initial Capital ($):", min_value=100.0, max_value=10000.0, value=1000.0, step=100.0, key="bt_capital")
-        unit_stake = st.number_input("Fixed Stake per Bet ($):", min_value=5.0, max_value=500.0, value=25.0, step=5.0, key="bt_stake")
+        unit_stake = st.number_input("Baseline Fixed Stake per Bet ($):", min_value=5.0, max_value=500.0, value=25.0, step=5.0, key="bt_stake",
+                                      help="Only used by the 'always back the favorite' baseline. The SEABISCUIT strategy itself stakes a half-Kelly fraction of its current bankroll per bet, capped at 25% — so it can shrink but can never go negative.")
 
     res = EquineBacktestEngine.run_ev_strategy_backtest(all_racecards, initial_bankroll_usd=initial_capital, unit_bet_usd=unit_stake)
 
     if res["total_bets"] == 0:
-        st.info("No positive-EV opportunities found across the available races — the generator recommended no bets.")
+        st.info("No sanely-priced (≤20-1) positive-EV opportunities found across the available races — the generator recommended no bets on any of them.")
         return
 
     # Key Backtest KPIs
