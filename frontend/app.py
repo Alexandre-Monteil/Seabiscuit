@@ -13,6 +13,22 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
+
+def _load_cloud_secrets_into_env() -> None:
+    """Bridges Streamlit Cloud's secrets manager (st.secrets, set via the app dashboard)
+    into os.environ, since .env is gitignored and never reaches the deployed environment.
+    Local runs are unaffected: st.secrets raises when no secrets.toml exists, which we
+    just treat as "no cloud secrets configured"."""
+    try:
+        for key, value in st.secrets.items():
+            if key not in os.environ:
+                os.environ[key] = str(value)
+    except Exception:
+        pass
+
+
+_load_cloud_secrets_into_env()
+
 from backend.utils import safe_float, safe_int, parse_race_datetime, format_race_distance, get_race_weather_info
 from backend.theracingapi_client import TheRacingAPIClient
 from backend.equine_stock_engine import EquineStockEngine
