@@ -130,61 +130,60 @@ class EquineVisualization3D:
             return cls._create_empty_fig("🏆 Finishing Position Probability Distribution")
 
     @classmethod
-    def build_risk_return_efficient_frontier_chart(cls, equity_assets: List[Dict[str, Any]]) -> go.Figure:
-        """MODEL 11: Risk vs Expected Return Efficient Frontier Bubble Chart."""
+    def build_kelly_stake_allocation_chart(cls, equity_assets: List[Dict[str, Any]]) -> go.Figure:
+        """MODEL 11: Recommended Half-Kelly Stake Allocation — how much bankroll to put on
+        each runner, straight from EquineStockEngine's kelly_stake_pct. Directly actionable
+        for a bettor deciding where to put money, unlike a pure risk/return scatter."""
         if not equity_assets:
-            return cls._create_empty_fig("⚖️ Risk vs Expected Return Efficient Frontier")
+            return cls._create_empty_fig("⚖️ Recommended Kelly Stake Allocation")
 
         try:
             valid_assets = [a for a in equity_assets if isinstance(a, dict)]
             if not valid_assets:
-                return cls._create_empty_fig("⚖️ Risk vs Expected Return Efficient Frontier")
+                return cls._create_empty_fig("⚖️ Recommended Kelly Stake Allocation")
+
+            valid_assets = sorted(valid_assets, key=lambda a: safe_float(a.get("kelly_stake_pct"), 0.0))
 
             names = [str(a.get("horse", "Runner")) for a in valid_assets]
             tickers = [str(a.get("ticker", "$RUNNER")) for a in valid_assets]
-            odds = [safe_float(a.get("decimal_odds"), 4.0) for a in valid_assets]
+            labels = [f"{t} ({h})" for t, h in zip(tickers, names)]
+            stakes = [safe_float(a.get("kelly_stake_pct"), 0.0) for a in valid_assets]
             evs = [safe_float(a.get("expected_value_pct") or (safe_float(a.get("expected_value")) * 100.0), 0.0) for a in valid_assets]
-            speeds = [safe_int(a.get("beyer_speed"), 110) for a in valid_assets]
             tags = [str(a.get("asset_tag", "MID_TIER_HEDGE")) for a in valid_assets]
-
-            risks = [round(o * 1.8, 1) for o in odds]
 
             color_map = {"VALUE_BUY": "#10B981", "OVERVALUED_FADE": "#F43F5E", "MID_TIER_HEDGE": "#F59E0B"}
             colors = [color_map.get(t, "#F59E0B") for t in tags]
 
+            total_stake = round(sum(stakes), 1)
+
             fig = go.Figure()
 
-            fig.add_hline(y=0, line_dash="dash", line_color="#94A3B8", opacity=0.8, annotation_text="0% EV Threshold", annotation_position="top left")
-
-            fig.add_trace(go.Scatter(
-                x=risks,
-                y=evs,
-                mode="markers+text",
-                text=tickers,
-                textposition="top center",
-                marker=dict(
-                    size=[max(16, min(40, s / 3.5)) for s in speeds],
-                    color=colors,
-                    opacity=0.85,
-                    line=dict(width=2.5, color="#0F172A")
-                ),
-                hovertemplate="<b>%{customdata[0]} (%{text})</b><br>Risk Index: %{x}<br>Expected Profit (EV): %{y:+.1f}%%<br>Speed Rating: %{customdata[1]}<extra></extra>",
-                customdata=list(zip(names, speeds))
+            fig.add_trace(go.Bar(
+                y=labels,
+                x=stakes,
+                orientation="h",
+                marker=dict(color=colors, line=dict(width=1.5, color="#0F172A")),
+                text=[f"{s:.1f}%" for s in stakes],
+                textposition="auto",
+                textfont=dict(color="#FFFFFF", size=11, family="JetBrains Mono"),
+                cliponaxis=False,
+                customdata=evs,
+                hovertemplate="<b>%{y}</b><br>Rec. Half-Kelly Stake: %{x:.1f}%%<br>Expected Profit (EV): %{customdata:+.1f}%%<extra></extra>"
             ))
 
             fig.update_layout(
-                title=dict(text="⚖️ Risk Variance vs Expected Profit (EV %) Efficient Frontier", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
+                title=dict(text=f"⚖️ Recommended Half-Kelly Stake Allocation (Total: {total_stake:.1f}% of Bankroll)", font=dict(color="#0F172A", size=15, family="Outfit"), x=0.01, y=0.97),
                 paper_bgcolor="#FFFFFF",
                 plot_bgcolor="#FFFFFF",
                 font=dict(color="#0F172A", family="JetBrains Mono, sans-serif", size=12),
-                height=380,
-                xaxis=dict(title=dict(text="Risk Variance Index (Odds Volatility)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
-                yaxis=dict(title=dict(text="Expected Profit (EV %)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
-                margin=dict(l=50, r=25, b=50, t=75)
+                height=max(380, len(valid_assets) * 42),
+                xaxis=dict(title=dict(text="Bankroll Allocation (%)", font=dict(color="#0F172A")), gridcolor="#F1F5F9", zeroline=False),
+                yaxis=dict(gridcolor="#F1F5F9", tickfont=dict(color="#0F172A", size=11), zeroline=False),
+                margin=dict(l=140, r=30, b=50, t=75)
             )
             return fig
         except Exception:
-            return cls._create_empty_fig("⚖️ Risk vs Expected Return Efficient Frontier")
+            return cls._create_empty_fig("⚖️ Recommended Kelly Stake Allocation")
 
     @classmethod
     def build_backtest_equity_curve_chart(cls, backtest_res: Dict[str, Any]) -> go.Figure:

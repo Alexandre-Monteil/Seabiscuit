@@ -428,7 +428,7 @@ def main():
         fig_mc = EquineVisualization3D.build_monte_carlo_win_distribution_chart(equity_assets)
         st.plotly_chart(fig_mc, width="stretch", config={"responsive": True, "displayModeBar": False})
     with col4:
-        fig_rr = EquineVisualization3D.build_risk_return_efficient_frontier_chart(equity_assets)
+        fig_rr = EquineVisualization3D.build_kelly_stake_allocation_chart(equity_assets)
         st.plotly_chart(fig_rr, width="stretch", config={"responsive": True, "displayModeBar": False})
 
     st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
