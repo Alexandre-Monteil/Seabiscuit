@@ -1,7 +1,7 @@
 """
 SEABISCUIT - Bet Generator Engine
-Decides WHICH bet type (Gagnant/Placé, Duo, Trio, Quinté+) to place on a race, or whether
-to skip it entirely — instead of always backing whichever single runner has the highest EV%.
+Decides WHICH bet type (Gagnant, Duo, or Quinté+) to place on a race, or whether to skip it
+entirely — instead of always backing whichever single runner has the highest EV%.
 """
 
 from typing import Dict, Any, Optional
@@ -74,41 +74,35 @@ class SeabiscuitBetGenerator:
             if safe_float(a.get("expected_value_pct") or (safe_float(a.get("expected_value")) * 100.0), 0.0) > cls.MIN_EV_PCT_TO_BET
         )
 
-        # Dominant favorite: bet the single runner, sized by how much the qualitative read
-        # agrees with the quant edge. Checked first — spreading a near-certain favorite's
-        # edge across a combo bet would waste it.
-        if win_gap >= cls.DOMINANT_WIN_GAP_PCT and qual_confidence >= 60.0:
+        # Dominant favorite: bet the single runner to win. Checked first — spreading a
+        # near-certain favorite's edge across a combo bet would waste it. If the qualitative
+        # read disagrees with a supposedly dominant favorite, that disagreement itself is a
+        # reason to sit out rather than downgrade to a weaker bet type.
+        if win_gap >= cls.DOMINANT_WIN_GAP_PCT:
+            if qual_confidence < 40.0:
+                return None
             bet_type = "GAGNANT"
             runners = [top1]
             rationale = (f"{top1.get('horse')} dominates the field (model win share {win1:.1f}% vs "
-                         f"{win2:.1f}% for 2nd) with strong quant/qualitative agreement ({qual_confidence:.0f}/100).")
-        elif win_gap >= cls.DOMINANT_WIN_GAP_PCT:
-            bet_type = "PLACE"
-            runners = [top1]
-            rationale = (f"{top1.get('horse')} is the clear model favorite, but qualitative confidence "
-                         f"is only {qual_confidence:.0f}/100 — hedging with Placé instead of Gagnant.")
-        # Open race (no dominant favorite): scope the combo bet to how many runners actually
-        # show an edge, widest first, so three-or-more genuine opportunities aren't collapsed
-        # into a two-runner Duo.
-        elif n >= 8 and positive_ev_count >= 4 and qual_confidence >= 55.0:
+                         f"{win2:.1f}% for 2nd) with quant/qualitative agreement ({qual_confidence:.0f}/100).")
+        # Open race (no dominant favorite): scope the bet to how many runners actually show
+        # an edge — a deep, competitive field with several positive-EV runners suits a
+        # Quinté+, a narrower edge suits a Duo, and a single standout without a big enough
+        # gap to call "dominant" still just backs that runner to win.
+        elif n >= 8 and positive_ev_count >= 3 and qual_confidence >= 55.0:
             bet_type = "QUINTE"
             runners = ranked[:5]
             rationale = (f"Large, competitive field ({n} runners) with {positive_ev_count} runners showing "
                          f"edge and reasonable model confidence ({qual_confidence:.0f}/100) — Quinté+ on the top 5.")
-        elif n >= 6 and positive_ev_count >= 3:
-            bet_type = "TRIO"
-            runners = ranked[:3]
-            rationale = (f"Three runners ({', '.join(r.get('horse', 'Runner') for r in ranked[:3])}) show "
-                         f"positive expected value in a wide-open field — Trio spreads the position.")
         elif n >= 3 and positive_ev_count >= 2:
             bet_type = "DUO"
             runners = ranked[:2]
             rationale = (f"{top1.get('horse')} and {ranked[1].get('horse')} are close in model win share "
                          f"({win1:.1f}% vs {win2:.1f}%) — a Duo captures the uncertainty between them.")
         else:
-            bet_type = "PLACE"
+            bet_type = "GAGNANT"
             runners = [top1]
-            rationale = f"No standout combination signal — a conservative Placé on the model's top pick, {top1.get('horse')}."
+            rationale = f"{top1.get('horse')} is the model's only standout pick in this race — a straight Gagnant."
 
         return {
             "bet_type": bet_type,

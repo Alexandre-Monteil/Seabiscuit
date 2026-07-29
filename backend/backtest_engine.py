@@ -1,8 +1,8 @@
 """
 SEABISCUIT - Quantitative Bet Generator Backtest & Bankroll Equity Curve Engine
 Simulates cumulative P/L, ROI %, Win Rate %, Sharpe Ratio, and Drawdown for the SEABISCUIT
-Bet Generator strategy (Gagnant/Placé, Duo, Trio, or Quinté+ per race, or no bet at all —
-see bet_generator_engine.py) rather than flat-staking whichever single runner has max EV%.
+Bet Generator strategy (Gagnant, Duo, or Quinté+ per race, or no bet at all — see
+bet_generator_engine.py) rather than flat-staking whichever single runner has max EV%.
 """
 
 from typing import List, Dict, Any
@@ -29,7 +29,7 @@ class EquineBacktestEngine:
                                   unit_bet_usd: float = 25.0, seed: int = 42) -> Dict[str, Any]:
         """
         Runs the SEABISCUIT Bet Generator across all races: for each one, the generator picks
-        a bet type (Gagnant/Placé, Duo, Trio, Quinté+) and target runner(s) from the combined
+        a bet type (Gagnant, Duo, or Quinté+) and target runner(s) from the combined
         quantitative + qualitative signals, or skips the race entirely when there's no edge.
         A single Plackett-Luce outcome is sampled per race and used to settle both the
         generated bet and the "always back the favorite" baseline, so the two are compared
@@ -79,8 +79,6 @@ class EquineBacktestEngine:
             race_date = str(rc.get("race_date", "2026-07-24"))
             course = str(rc.get("course", "Track"))
             race_seed = int(rng.integers(0, 2**31))
-            n_runners = len(assets)
-            places_paid = 3 if n_runners >= 8 else (2 if n_runners >= 5 else 1)
 
             # One realized outcome per race, shared by the generated bet and the baseline.
             outcome_order = EquineMonteCarloEngine.sample_single_outcome(assets, seed=race_seed)
@@ -113,19 +111,10 @@ class EquineBacktestEngine:
                 runner = next((a for a in assets if a.get("ticker") == target_tickers[0]), assets[0])
                 odds = safe_float(runner.get("decimal_odds"), default=4.0)
                 won = bool(outcome_order and outcome_order[0] == target_tickers[0])
-            elif bet_type == "PLACE":
-                runner = next((a for a in assets if a.get("ticker") == target_tickers[0]), assets[0])
-                odds_win = safe_float(runner.get("decimal_odds"), default=4.0)
-                odds = round(1.0 + (odds_win - 1.0) / 3.4, 2)
-                won = target_tickers[0] in outcome_order[:places_paid]
             elif bet_type == "DUO":
                 combo = EquineMonteCarloEngine.simulate_combo_probability(assets, target_tickers, exact_order=False, n_sims=6000, seed=race_seed + 1)
                 odds = combo["fair_odds"]
                 won = set(target_tickers) == set(outcome_order[:2])
-            elif bet_type == "TRIO":
-                combo = EquineMonteCarloEngine.simulate_combo_probability(assets, target_tickers, exact_order=False, n_sims=6000, seed=race_seed + 2)
-                odds = combo["fair_odds"]
-                won = set(target_tickers) == set(outcome_order[:3])
             else:  # QUINTE
                 combo = EquineMonteCarloEngine.simulate_combo_probability(assets, target_tickers, exact_order=False, n_sims=10000, seed=race_seed + 3)
                 odds = combo["fair_odds"]

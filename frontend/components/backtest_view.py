@@ -21,7 +21,7 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
     st.markdown(compact_html("""
     <div class="glass-card" style="border-top: 4px solid var(--accent-emerald, #10B981); padding: 18px 24px; margin-bottom: 20px; animation: fadeIn 0.5s ease;">
         <h3 style="color: #047857; margin-top: 0; font-weight: 900; font-family: 'Outfit', sans-serif;">📈 SEABISCUIT BET GENERATOR BACKTEST & P/L TRACKER</h3>
-        <p style="color: var(--text-muted, #475569); font-size: 0.92rem; margin-bottom: 0; font-weight: 600;">Simulates the SEABISCUIT Bet Generator's actual picks — Gagnant/Placé, Duo, Trio, or Quinté+ chosen per race from quant + qualitative signals, or no bet at all — not just backing whichever runner has the highest EV%.</p>
+        <p style="color: var(--text-muted, #475569); font-size: 0.92rem; margin-bottom: 0; font-weight: 600;">Simulates the SEABISCUIT Bet Generator's actual picks — Gagnant, Duo, or Quinté+ chosen per race from quant + qualitative signals, or no bet at all — not just backing whichever runner has the highest EV%.</p>
     </div>
     """), unsafe_allow_html=True)
 
