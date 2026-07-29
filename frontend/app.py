@@ -179,10 +179,10 @@ table tbody tr:hover { background-color: rgba(99,102,241,0.04) !important; }
 
 @st.cache_data(ttl=15, show_spinner=False)
 def fetch_race_data():
-    """Fetches live racecard data across 15-day J-7 to J+7 horizon from The Racing API safely."""
+    """Fetches real racecards for today/tomorrow plus real results for the past 7 days."""
     try:
         client = TheRacingAPIClient()
-        raw_racecards = client.get_upcoming_racecards(past_days=7, future_days=7)
+        raw_racecards = client.get_upcoming_racecards(past_days=7, future_days=1)
         if not raw_racecards:
             return []
         processed = [EquineStockEngine.process_racecard(rc) for rc in raw_racecards if isinstance(rc, dict)]
@@ -209,21 +209,21 @@ def main():
 
     now = datetime.now()
 
-    # MULTI-DAY J-7 TO J+7 DATE FILTER BAR
+    # MULTI-DAY DATE FILTER BAR (today/tomorrow racecards + past 7 days of results)
     dates_map = {}
     for rc in all_racecards:
         d_key = str(rc.get("race_date", "2026-07-28"))
         d_lbl = str(rc.get("race_date_display", d_key))
         dates_map[d_lbl] = d_key
 
-    date_options = ["📅 All Horizon Dates (J-7 to J+7)"] + list(dates_map.keys())
-    
+    date_options = ["📅 All Dates (J-7 to J+1)"] + list(dates_map.keys())
+
     date_col, race_col, filter_col = st.columns([1.5, 3.5, 1])
-    
+
     with date_col:
         selected_date_lbl = st.selectbox("Date Filter:", date_options, label_visibility="collapsed")
-        
-    if selected_date_lbl != "📅 All Horizon Dates (J-7 to J+7)":
+
+    if selected_date_lbl != "📅 All Dates (J-7 to J+1)":
         target_date = dates_map.get(selected_date_lbl)
         active_racecards = [rc for rc in all_racecards if str(rc.get("race_date")) == target_date]
         if not active_racecards:
