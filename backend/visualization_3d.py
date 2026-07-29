@@ -145,7 +145,7 @@ class EquineVisualization3D:
             odds = [safe_float(a.get("decimal_odds"), 4.0) for a in valid_assets]
             evs = [safe_float(a.get("expected_value_pct") or (safe_float(a.get("expected_value")) * 100.0), 0.0) for a in valid_assets]
             speeds = [safe_int(a.get("beyer_speed"), 110) for a in valid_assets]
-            tags = [str(a.get("asset_tag"), "MID_TIER_HEDGE") for a in valid_assets]
+            tags = [str(a.get("asset_tag", "MID_TIER_HEDGE")) for a in valid_assets]
 
             risks = [round(o * 1.8, 1) for o in odds]
 
