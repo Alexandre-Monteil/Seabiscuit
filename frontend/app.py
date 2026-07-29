@@ -23,6 +23,8 @@ from frontend.components.horse_detail_view import render_horse_detail_view
 from frontend.components.intel_modal import render_intel_dossier_modal
 from frontend.components.bet_simulator_view import render_bet_simulator_view
 from frontend.components.backtest_view import render_backtest_view
+from frontend.components.orderbook_view import render_orderbook_view
+from frontend.components.portfolio_view import render_portfolio_view
 
 # Streamlit Page Setup
 st.set_page_config(
@@ -241,7 +243,6 @@ def main():
     # WEATHER & FULL METRIC DISTANCE INFOBAR
     course_name = str(current_racecard.get('course', 'Ascot')).upper()
     dist_full = format_race_distance(current_racecard.get('distance_display') or current_racecard.get('distance_furlongs'), current_racecard.get('distance_furlongs'))
-    going_name = str(current_racecard.get('going', 'Good'))
     post_time = str(current_racecard.get('post_time', '15:35'))
     date_str = str(current_racecard.get('race_date_display', 'Today'))
     weather_info = get_race_weather_info(current_racecard)
@@ -377,6 +378,16 @@ def main():
     with st.expander("📈 SEABISCUIT +EV STRATEGY BACKTEST & CUMULATIVE P/L TRACKER", expanded=False):
         render_backtest_view(all_racecards)
 
+    st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+
+    with st.expander("📊 ORDERBOOK & MARKET DEPTH (L2 CLOB MICROSTRUCTURE)", expanded=False):
+        render_orderbook_view(current_racecard)
+
+    st.markdown("<div style='margin-bottom: 16px;'></div>", unsafe_allow_html=True)
+
+    with st.expander("💼 MY HORSE STOCK TRADING PORTFOLIO", expanded=False):
+        render_portfolio_view(equity_assets)
+
     st.markdown("---")
 
     # ---------------------------------------------------------
@@ -437,6 +448,12 @@ def main():
     with col10:
         fig_traj = EquineVisualization3D.build_multi_runner_trajectory_chart(equity_assets)
         st.plotly_chart(fig_traj, width="stretch", config={"responsive": True, "displayModeBar": False})
+
+    st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
+
+    # Row 6: Exacta Monte Carlo Probability Heatmap (full width — helps spot Couplé value at a glance)
+    fig_exacta = EquineVisualization3D.build_exacta_probability_heatmap(equity_assets)
+    st.plotly_chart(fig_exacta, width="stretch", config={"responsive": True, "displayModeBar": False})
 
     st.markdown("---")
 

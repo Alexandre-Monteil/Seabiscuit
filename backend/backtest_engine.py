@@ -8,10 +8,10 @@ import numpy as np
 import pandas as pd
 
 try:
-    from .utils import safe_float, safe_int
+    from .utils import safe_float
     from .equine_stock_engine import EquineStockEngine
 except (ImportError, ValueError):
-    from backend.utils import safe_float, safe_int
+    from backend.utils import safe_float
     from backend.equine_stock_engine import EquineStockEngine
 
 
@@ -19,9 +19,13 @@ class EquineBacktestEngine:
     """Quantitative Strategy Backtest & P/L Tracking Suite."""
 
     @classmethod
-    def run_ev_strategy_backtest(cls, racecards: List[Dict[str, Any]], initial_bankroll_usd: float = 1000.0, unit_bet_usd: float = 25.0) -> Dict[str, Any]:
+    def run_ev_strategy_backtest(cls, racecards: List[Dict[str, Any]], initial_bankroll_usd: float = 1000.0,
+                                  unit_bet_usd: float = 25.0, seed: int = 42) -> Dict[str, Any]:
         """
-        Runs empirical backtest on all +EV Nuggets across completed races.
+        Runs empirical backtest on all +EV Nuggets across completed races, plus a "back the
+        favorite in the same races" baseline for honest comparison. Outcomes are drawn directly
+        from each runner's own modeled win probability — no artificial alpha-realization boost —
+        so a losing strategy will show as losing rather than being dressed up as profitable.
         Calculates cumulative bankroll growth, win rate %, ROI %, Sharpe ratio, and drawdown.
         """
         if not racecards:
@@ -65,7 +69,7 @@ class EquineBacktestEngine:
         total_profit = 0.0
         returns_list = []
 
-        np.random.seed(42)  # Deterministic empirical simulation reproducibility
+        rng = np.random.default_rng(seed)  # Deterministic reproducibility, no legacy global state
 
         for idx, (asset, race_name, race_date, course) in enumerate(ev_nuggets):
             ticker = str(asset.get("ticker", "$RUNNER"))
@@ -74,9 +78,9 @@ class EquineBacktestEngine:
             ev_pct = safe_float(asset.get("expected_value"), default=0.15) * 100.0
             win_prob = safe_float(asset.get("win_percent"), default=1.0 / odds)
 
-            # Determine bet outcome based on model probability & empirical form
-            won = np.random.random() < min(0.85, win_prob * 1.12)  # +EV alpha realization
-            
+            # Outcome drawn directly from the model's own win probability — no fudge factor.
+            won = bool(rng.random() < min(0.98, win_prob))
+
             payout = unit_bet_usd * odds if won else 0.0
             net_pl = payout - unit_bet_usd
             
@@ -109,20 +113,61 @@ class EquineBacktestEngine:
 
         roi_pct = round((total_profit / max(1.0, total_staked)) * 100.0, 1)
         win_rate_pct = round((winning_bets / max(1, total_bets)) * 100.0, 1)
-        
+
         # Calculate Max Drawdown
         arr_eq = np.array(equity_curve)
         peak = np.maximum.accumulate(arr_eq)
         drawdown = (arr_eq - peak) / peak
         max_drawdown_pct = round(abs(float(np.min(drawdown))) * 100.0, 1)
 
-        # Calculate Sharpe Ratio
+        # Calculate Sharpe Ratio (no artificial floor — a bad strategy should show a bad Sharpe)
         if len(returns_list) > 1 and np.std(returns_list) > 0:
             sharpe = round(float(np.mean(returns_list) / np.std(returns_list) * np.sqrt(252 / len(returns_list))), 2)
         else:
-            sharpe = 1.85
+            sharpe = 0.0
 
         df_equity = pd.DataFrame({"step": dates, "bankroll": equity_curve})
+
+        # --- Baseline: flat-staking the market favorite in every race that produced a nugget ---
+        baseline_curve = [initial_bankroll_usd]
+        baseline_bankroll = initial_bankroll_usd
+        baseline_bets = 0
+        baseline_wins = 0
+        baseline_staked = 0.0
+        baseline_profit = 0.0
+        seen_races = set()
+
+        for rc in processed_cards:
+            race_assets = [a for a in rc.get("equity_assets", []) if isinstance(a, dict)]
+            race_key = rc.get("race_id")
+            if not race_assets or race_key in seen_races:
+                continue
+            if not any(a.get("asset_tag") == "VALUE_BUY" for a in race_assets):
+                continue
+            seen_races.add(race_key)
+
+            favorite = min(race_assets, key=lambda a: safe_float(a.get("decimal_odds"), default=99.0))
+            fav_odds = safe_float(favorite.get("decimal_odds"), default=4.0)
+            fav_prob = safe_float(favorite.get("win_percent"), default=1.0 / fav_odds)
+
+            won = bool(rng.random() < min(0.98, fav_prob))
+            payout = unit_bet_usd * fav_odds if won else 0.0
+            net_pl = payout - unit_bet_usd
+
+            baseline_bankroll += net_pl
+            baseline_staked += unit_bet_usd
+            baseline_profit += net_pl
+            baseline_bets += 1
+            if won:
+                baseline_wins += 1
+            baseline_curve.append(round(baseline_bankroll, 2))
+
+        baseline_roi_pct = round((baseline_profit / max(1.0, baseline_staked)) * 100.0, 1)
+        baseline_win_rate_pct = round((baseline_wins / max(1, baseline_bets)) * 100.0, 1)
+        df_baseline_equity = pd.DataFrame({
+            "step": [f"Race {i}" for i in range(len(baseline_curve))],
+            "bankroll": baseline_curve
+        })
 
         return {
             "initial_bankroll_usd": initial_bankroll_usd,
@@ -133,9 +178,14 @@ class EquineBacktestEngine:
             "winning_bets": winning_bets,
             "win_rate_pct": win_rate_pct,
             "max_drawdown_pct": max_drawdown_pct,
-            "sharpe_ratio": max(1.2, sharpe),
+            "sharpe_ratio": sharpe,
             "equity_df": df_equity,
-            "bets_history": bets_history
+            "bets_history": bets_history,
+            "baseline_final_bankroll_usd": round(baseline_bankroll, 2),
+            "baseline_roi_pct": baseline_roi_pct,
+            "baseline_win_rate_pct": baseline_win_rate_pct,
+            "baseline_bets": baseline_bets,
+            "baseline_equity_df": df_baseline_equity
         }
 
     @staticmethod
@@ -152,5 +202,10 @@ class EquineBacktestEngine:
             "max_drawdown_pct": 0.0,
             "sharpe_ratio": 0.0,
             "equity_df": pd.DataFrame({"step": ["Start"], "bankroll": [initial_bankroll]}),
-            "bets_history": []
+            "bets_history": [],
+            "baseline_final_bankroll_usd": initial_bankroll,
+            "baseline_roi_pct": 0.0,
+            "baseline_win_rate_pct": 0.0,
+            "baseline_bets": 0,
+            "baseline_equity_df": pd.DataFrame({"step": ["Start"], "bankroll": [initial_bankroll]})
         }

@@ -9,9 +9,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 try:
-    from .utils import safe_float, safe_int, normalize_array_input
+    from .utils import safe_float, safe_int
 except (ImportError, ValueError):
-    from backend.utils import safe_float, safe_int, normalize_array_input
+    from backend.utils import safe_float, safe_int
 
 
 class EquineTimeSeriesEngine:
@@ -87,6 +87,21 @@ class EquineTimeSeriesEngine:
         df["senkou_span_b"] = round((high_12 + low_12) / 2.0, 2)
         
         return df
+
+    @classmethod
+    def compute_eex_composite_index(cls, days: int = 90, base_value: float = 1000.0) -> pd.DataFrame:
+        """Generates the $EEX Composite Market Index historical trajectory. No persisted history
+        of past racecard snapshots exists to aggregate a real composite from, so — like
+        generate_career_ohlc_candles — this produces a seeded illustrative random-walk series."""
+        rng = np.random.default_rng(20260101)
+        dates = [(datetime.now() - timedelta(days=days - i)).strftime("%Y-%m-%d") for i in range(days)]
+
+        values = [base_value]
+        for _ in range(days - 1):
+            drift = rng.normal(0.0006, 0.012)
+            values.append(max(200.0, values[-1] * (1.0 + drift)))
+
+        return pd.DataFrame({"date": dates, "eex_index": [round(v, 2) for v in values]})
 
     @classmethod
     def compute_multi_runner_time_series(cls, equity_assets: List[Dict[str, Any]], num_races: int = 10) -> pd.DataFrame:

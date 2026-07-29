@@ -127,55 +127,63 @@ def render_bet_simulator_view(racecard: Dict[str, Any]):
 
     # ── TAB 2: COUPLÉ DUO ──
     with tab2:
-        c1, c2, c3 = st.columns([1.5, 1.5, 1])
-        with c1:
-            r1 = st.selectbox("1st Horse:", range(len(runner_labels)),
-                              format_func=lambda i: runner_labels[i], key="sim_duo_r1")
-        with c2:
-            r2_opts = [i for i in range(len(runner_labels)) if i != r1]
-            r2 = st.selectbox("2nd Horse:", r2_opts,
-                              format_func=lambda i: runner_labels[i], key="sim_duo_r2")
-        with c3:
-            duo_stake = st.slider("Stake ($):", 5.0, 250.0, 25.0, 5.0, key="sim_duo_stake")
+        if len(runners) < 2:
+            st.info("Couplé Duo requires at least 2 runners.")
+        else:
+            c1, c2, c3 = st.columns([1.5, 1.5, 1])
+            with c1:
+                r1 = st.selectbox("1st Horse:", range(len(runner_labels)),
+                                  format_func=lambda i: runner_labels[i], key="sim_duo_r1")
+            with c2:
+                r2_opts = [i for i in range(len(runner_labels)) if i != r1]
+                r2 = st.selectbox("2nd Horse:", r2_opts,
+                                  format_func=lambda i: runner_labels[i], key="sim_duo_r2")
+            with c3:
+                duo_stake = st.slider("Stake ($):", 5.0, 250.0, 25.0, 5.0, key="sim_duo_stake")
 
-        d = QuantBetSimulatorEngine.simulate_duo_couple(runners[r1], runners[r2], stake_usd=duo_stake)
+            d = QuantBetSimulatorEngine.simulate_duo_couple(runners[r1], runners[r2], runners, stake_usd=duo_stake)
 
-        st.markdown(_bet_slip_card(
-            "👯 COUPLÉ DUO (EXACTA)", "#D97706",
-            d.get("payout_usd", 0), d.get("profit_usd", 0), d.get("ev_pct", 0),
-            extra_rows=[
-                ("HARVILLE JOINT PROB", f"{d.get('joint_prob_pct',0):.2f}%"),
-                ("EXPECTED RETURN", f"{d.get('ev_pct',0):+.1f}%"),
-            ]
-        ), unsafe_allow_html=True)
+            st.markdown(_bet_slip_card(
+                "👯 COUPLÉ DUO (EXACTA)", "#D97706",
+                d.get("payout_usd", 0), d.get("profit_usd", 0), d.get("ev_pct", 0),
+                extra_rows=[
+                    ("MONTE CARLO PROB (10K SIMS)", f"{d.get('joint_prob_pct',0):.2f}%"),
+                    ("MODEL FAIR DIVIDEND", f"{d.get('estimated_odds',0):.2f}"),
+                ]
+            ), unsafe_allow_html=True)
+            st.caption("💡 Compare the **Model Fair Dividend** above to the live PMU/bookmaker payout on the tote board — if the real payout is higher, you have an edge.")
 
     # ── TAB 3: TRIO ──
     with tab3:
-        t1, t2, t3, t4 = st.columns(4)
-        with t1:
-            tr1 = st.selectbox("1st:", range(len(runner_labels)),
-                               format_func=lambda i: runner_labels[i], key="sim_trio_1")
-        with t2:
-            tr2 = st.selectbox("2nd:", [i for i in range(len(runner_labels)) if i != tr1],
-                               format_func=lambda i: runner_labels[i], key="sim_trio_2")
-        with t3:
-            tr3 = st.selectbox("3rd:", [i for i in range(len(runner_labels)) if i not in (tr1, tr2)],
-                               format_func=lambda i: runner_labels[i], key="sim_trio_3")
-        with t4:
-            trio_stake = st.number_input("Stake ($):", 2.0, 500.0, 10.0, 2.0, key="sim_trio_stake")
+        if len(runners) < 3:
+            st.info("Trio requires at least 3 runners.")
+        else:
+            t1, t2, t3, t4 = st.columns(4)
+            with t1:
+                tr1 = st.selectbox("1st:", range(len(runner_labels)),
+                                   format_func=lambda i: runner_labels[i], key="sim_trio_1")
+            with t2:
+                tr2 = st.selectbox("2nd:", [i for i in range(len(runner_labels)) if i != tr1],
+                                   format_func=lambda i: runner_labels[i], key="sim_trio_2")
+            with t3:
+                tr3 = st.selectbox("3rd:", [i for i in range(len(runner_labels)) if i not in (tr1, tr2)],
+                                   format_func=lambda i: runner_labels[i], key="sim_trio_3")
+            with t4:
+                trio_stake = st.number_input("Stake ($):", 2.0, 500.0, 10.0, 2.0, key="sim_trio_stake")
 
-        trio_res = QuantBetSimulatorEngine.simulate_trio(
-            [runners[tr1], runners[tr2], runners[tr3]], stake_usd=trio_stake
-        )
+            trio_res = QuantBetSimulatorEngine.simulate_trio(
+                [runners[tr1], runners[tr2], runners[tr3]], runners, stake_usd=trio_stake
+            )
 
-        st.markdown(_bet_slip_card(
-            "🥉 TRIO (TRIFECTA)", "#8B5CF6",
-            trio_res.get("payout_usd", 0), trio_res.get("profit_usd", 0), trio_res.get("ev_pct", 0),
-            extra_rows=[
-                ("HARVILLE TRIO PROB", f"{trio_res.get('joint_prob_pct',0):.3f}%"),
-                ("EXPECTED RETURN", f"{trio_res.get('ev_pct',0):+.1f}%"),
-            ]
-        ), unsafe_allow_html=True)
+            st.markdown(_bet_slip_card(
+                "🥉 TRIO (TRIFECTA)", "#8B5CF6",
+                trio_res.get("payout_usd", 0), trio_res.get("profit_usd", 0), trio_res.get("ev_pct", 0),
+                extra_rows=[
+                    ("MONTE CARLO PROB (10K SIMS)", f"{trio_res.get('joint_prob_pct',0):.3f}%"),
+                    ("MODEL FAIR DIVIDEND", f"{trio_res.get('estimated_odds',0):.2f}"),
+                ]
+            ), unsafe_allow_html=True)
+            st.caption("💡 Compare the **Model Fair Dividend** above to the live PMU/bookmaker payout on the tote board — if the real payout is higher, you have an edge.")
 
     # ── TAB 4: QUINTÉ+ ──
     with tab4:
@@ -185,7 +193,7 @@ def render_bet_simulator_view(racecard: Dict[str, Any]):
             if len(q_sel) == 5:
                 q_indices = [runner_labels.index(s) for s in q_sel]
                 q_runners = [runners[i] for i in q_indices]
-                q = QuantBetSimulatorEngine.simulate_quinte(q_runners, stake_usd=10.0)
+                q = QuantBetSimulatorEngine.simulate_quinte(q_runners, runners, stake_usd=10.0)
                 st.markdown(_quinte_slip(
                     q.get("payout_usd", 0), q.get("profit_usd", 0),
                     q.get("ev_pct", 0), q.get("joint_prob_pct", 0)

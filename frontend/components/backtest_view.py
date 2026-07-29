@@ -6,14 +6,8 @@ Renders cumulative bankroll growth, win rate %, ROI %, Sharpe Ratio, Max Drawdow
 from typing import List, Dict, Any
 import streamlit as st
 
-try:
-    from backend.backtest_engine import EquineBacktestEngine
-    from backend.visualization_3d import EquineVisualization3D
-    from backend.utils import safe_float, safe_int
-except (ImportError, ValueError):
-    from backend.backtest_engine import EquineBacktestEngine
-    from backend.visualization_3d import EquineVisualization3D
-    from backend.utils import safe_float, safe_int
+from backend.backtest_engine import EquineBacktestEngine
+from backend.visualization_3d import EquineVisualization3D
 
 
 def render_backtest_view(all_racecards: List[Dict[str, Any]]):
@@ -43,6 +37,16 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
     k3.metric("Win Rate %", f"{res['win_rate_pct']:.1f}%", delta=f"{res['winning_bets']}/{res['total_bets']} Wins")
     k4.metric("Sharpe Ratio", f"{res['sharpe_ratio']:.2f}")
     k5.metric("Max Drawdown", f"-{res['max_drawdown_pct']:.1f}%")
+
+    st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+
+    vs_delta = round(res['roi_pct'] - res.get('baseline_roi_pct', 0.0), 1)
+    st.caption(
+        f"⚪ **Baseline (back the favorite in the same races)**: "
+        f"${res.get('baseline_final_bankroll_usd', 0):,.2f} final bankroll, "
+        f"{res.get('baseline_roi_pct', 0):+.1f}% ROI over {res.get('baseline_bets', 0)} races "
+        f"— the +EV strategy is **{vs_delta:+.1f}pp** ROI {'ahead' if vs_delta >= 0 else 'behind'} of naive favorite-backing."
+    )
 
     st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
 

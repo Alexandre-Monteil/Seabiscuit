@@ -5,7 +5,7 @@ Queries DeepSeek-R1 / DeepSeek-V3 API via DEEPSEEK_API_KEY or synthesizes algori
 
 import os
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any
 import httpx
 from dotenv import load_dotenv
 from .utils import safe_float

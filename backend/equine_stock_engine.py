@@ -6,12 +6,15 @@ Actual/Expected (A/E) alpha ratios, 1-Unit P/L calculations, and Fractional Kell
 
 from typing import Dict, List, Any
 import numpy as np
-import pandas as pd
 
 try:
     from .utils import safe_float, safe_int
+    from .ml_engine import EquineWinProbabilityModel
+    from .monte_carlo_engine import EquineMonteCarloEngine
 except (ImportError, ValueError):
     from backend.utils import safe_float, safe_int
+    from backend.ml_engine import EquineWinProbabilityModel
+    from backend.monte_carlo_engine import EquineMonteCarloEngine
 
 
 class EquineStockEngine:
@@ -48,15 +51,10 @@ class EquineStockEngine:
         market_cap = round(race_pool_usd * (share_price / 100.0), 2)
         
         beyer_speed = safe_int(runner.get("beyer_speed"), default=112 - runner_idx * 2)
-        form_str = str(runner.get("form", ""))
-        
-        # Relative Multiplicative Model Win Probability & Bounded A/E Alpha Scaling
-        avg_beyer_benchmark = 110.0
-        rating_delta = (beyer_speed - avg_beyer_benchmark) / 25.0  # Relative speed rating scaling
-        form_delta = 0.06 if "1" in form_str else (-0.06 if "0" in form_str or "9" in form_str else 0.0)
-        
-        # A/E ratio strictly bounded within realistic quantitative hedge fund range [0.75, 1.35]
-        ae_ratio = round(min(1.35, max(0.75, 1.00 + rating_delta * 0.12 + form_delta)), 2)
+
+        # A/E alpha ratio from the XGBoost calibration model (backend/ml_engine.py),
+        # strictly bounded within realistic quantitative hedge fund range [0.75, 1.35]
+        ae_ratio = EquineWinProbabilityModel.predict_ae_ratio(runner)
         
         # Empirical Win Prob = Implied Win Prob * A/E Ratio
         empirical_win_prob = round(min(0.92, max(0.01, implied_win_prob * ae_ratio)), 4)
@@ -137,9 +135,21 @@ class EquineStockEngine:
             stock = cls.calculate_stock_metrics(r, race_pool_usd=prize_money * 1.5, runner_idx=idx, total_runners=total_r)
             stock["odds_timeline"] = cls.generate_odds_timeline(stock["share_price_usd"])
             processed_runners.append(stock)
-            
+
+        # Monte Carlo Plackett-Luce simulation (10,000 full-field runs) supplies the true
+        # place/show frequencies used below, replacing the flat 0.65 default place_percent.
+        race_seed = abs(hash(str(racecard.get("race_id")))) % (2**31)
+        mc_results = EquineMonteCarloEngine.simulate_race(processed_runners, n_sims=10000, seed=race_seed)
+        mc_lookup = {r["ticker"]: r for r in mc_results.get("runner_probs", [])}
+        for stock in processed_runners:
+            mc = mc_lookup.get(stock["ticker"])
+            if mc:
+                stock["place_percent"] = round(mc["place_pct"] / 100.0, 4)
+                stock["mc_win_pct"] = mc["win_pct"]
+                stock["mc_fair_odds"] = mc["fair_odds"]
+
         processed_runners.sort(key=lambda x: x["share_price_usd"], reverse=True)
-        
+
         return {
             "race_id": racecard.get("race_id"),
             "course": racecard.get("course"),
@@ -153,7 +163,8 @@ class EquineStockEngine:
             "post_time": racecard.get("post_time"),
             "race_date": racecard.get("race_date"),
             "race_date_display": racecard.get("race_date_display"),
-            "equity_assets": processed_runners
+            "equity_assets": processed_runners,
+            "monte_carlo": mc_results
         }
 
     @staticmethod

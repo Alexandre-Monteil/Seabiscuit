@@ -4,7 +4,6 @@ SEABISCUIT - Horse Equine Asset Detail View (Ichimoku Cloud & Technical Analytic
 
 import streamlit as st
 from typing import Dict, Any
-from backend.utils import safe_float, safe_int
 from backend.visualization_3d import EquineVisualization3D
 
 

@@ -4,7 +4,7 @@ Provides safe type conversions, datetime parsing for race post-times, metric dis
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 
 
 def safe_float(val: Any, default: float = 0.0) -> float:
@@ -29,15 +29,6 @@ def safe_int(val: Any, default: int = 0) -> int:
         return int(float(val))
     except (ValueError, TypeError):
         return default
-
-
-def normalize_array_input(val: Any) -> List[Any]:
-    """Helper to ensure array/list inputs are normalized."""
-    if isinstance(val, list):
-        return val
-    if isinstance(val, tuple):
-        return list(val)
-    return []
 
 
 def format_race_distance(distance_raw: Any, furlongs: Optional[float] = None) -> str:

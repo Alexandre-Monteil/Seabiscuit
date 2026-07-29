@@ -3,8 +3,8 @@ SEABISCUIT - Institutional Equine Stock Exchange FastAPI Router
 Exposes high-frequency microservices for racecards, horse asset metrics, 3D visualizations, and The Racing API data.
 """
 
-from fastapi import APIRouter, Query, HTTPException
-from typing import Dict, List, Any
+from fastapi import APIRouter, Query
+from typing import Dict, Any
 from .theracingapi_client import TheRacingAPIClient
 from .equine_stock_engine import EquineStockEngine
 from .time_series_engine import EquineTimeSeriesEngine

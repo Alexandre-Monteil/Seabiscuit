@@ -45,7 +45,6 @@ def render_stock_asset_cards(equity_assets: List[Dict[str, Any]]):
         decimal_odds = safe_float(asset.get("decimal_odds"), default=4.0)
         share_price = safe_float(asset.get("share_price_usd"), default=25.0)
         ev_pct = safe_float(asset.get("expected_value_pct") or (safe_float(asset.get("expected_value")) * 100.0), default=0.0)
-        ae_ratio = safe_float(asset.get("ae_ratio"), default=1.0)
         beyer_speed = safe_int(asset.get("beyer_speed"), default=110)
         one_unit_pl = safe_float(asset.get("one_unit_pl"), default=0.0)
         kelly_stake = safe_float(asset.get("kelly_stake_pct"), default=0.0)

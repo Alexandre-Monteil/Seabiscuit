@@ -9,8 +9,6 @@ from backend.portfolio_engine import EquinePortfolioEngine
 
 def render_portfolio_view(current_assets: List[Dict[str, Any]]) -> None:
     """Renders the equine trading portfolio and backtesting simulator."""
-    st.markdown("## 💼 MY HORSE STOCK TRADING PORTFOLIO")
-    
     if "portfolio_engine" not in st.session_state:
         st.session_state["portfolio_engine"] = EquinePortfolioEngine(initial_cash_usd=100000.0)
 
@@ -31,6 +29,3 @@ def render_portfolio_view(current_assets: List[Dict[str, Any]]) -> None:
         st.dataframe(holdings, width="stretch", hide_index=True)
     else:
         st.info("No open positions. Browse the Turbo Terminal to buy (+EV Long) or short (Fade) horse equities!")
-
-
-render_portfolio_simulator = render_portfolio_view
