@@ -1,6 +1,7 @@
 """
-SEABISCUIT - Interactive Quantitative EV Alpha Backtest UI Component
-Renders cumulative bankroll growth, win rate %, ROI %, Sharpe Ratio, Max Drawdown, and trade history table.
+SEABISCUIT - Interactive Bet Generator Backtest UI Component
+Renders cumulative bankroll growth, win rate %, ROI %, Sharpe Ratio, Max Drawdown, bet-type
+breakdown, and trade history for the SEABISCUIT Bet Generator strategy.
 """
 
 from typing import List, Dict, Any
@@ -12,15 +13,15 @@ from frontend.html_utils import compact_html
 
 
 def render_backtest_view(all_racecards: List[Dict[str, Any]]):
-    """Renders the Seabiscuit Quantitative Strategy Backtest & P/L Tracker Dashboard."""
+    """Renders the Seabiscuit Bet Generator Backtest & P/L Tracker Dashboard."""
     if not all_racecards:
         st.info("No racecard data available for backtesting.")
         return
 
     st.markdown(compact_html("""
     <div class="glass-card" style="border-top: 4px solid var(--accent-emerald, #10B981); padding: 18px 24px; margin-bottom: 20px; animation: fadeIn 0.5s ease;">
-        <h3 style="color: #047857; margin-top: 0; font-weight: 900; font-family: 'Outfit', sans-serif;">📈 SEABISCUIT +EV ALPHA STRATEGY BACKTEST & P/L TRACKER</h3>
-        <p style="color: var(--text-muted, #475569); font-size: 0.92rem; margin-bottom: 0; font-weight: 600;">Empirical performance simulation of strictly placing bets on Seabiscuit 🟢 +EV Golden Nuggets across all completed races.</p>
+        <h3 style="color: #047857; margin-top: 0; font-weight: 900; font-family: 'Outfit', sans-serif;">📈 SEABISCUIT BET GENERATOR BACKTEST & P/L TRACKER</h3>
+        <p style="color: var(--text-muted, #475569); font-size: 0.92rem; margin-bottom: 0; font-weight: 600;">Simulates the SEABISCUIT Bet Generator's actual picks — Gagnant/Placé, Duo, Trio, or Quinté+ chosen per race from quant + qualitative signals, or no bet at all — not just backing whichever runner has the highest EV%.</p>
     </div>
     """), unsafe_allow_html=True)
 
@@ -30,6 +31,10 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
         unit_stake = st.number_input("Fixed Stake per Bet ($):", min_value=5.0, max_value=500.0, value=25.0, step=5.0, key="bt_stake")
 
     res = EquineBacktestEngine.run_ev_strategy_backtest(all_racecards, initial_bankroll_usd=initial_capital, unit_bet_usd=unit_stake)
+
+    if res["total_bets"] == 0:
+        st.info("No positive-EV opportunities found across the available races — the generator recommended no bets.")
+        return
 
     # Key Backtest KPIs
     k1, k2, k3, k4, k5 = st.columns(5)
@@ -43,10 +48,12 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
 
     vs_delta = round(res['roi_pct'] - res.get('baseline_roi_pct', 0.0), 1)
     st.caption(
-        f"⚪ **Baseline (back the favorite in the same races)**: "
+        f"⚪ **Baseline (always back the favorite)**: "
         f"${res.get('baseline_final_bankroll_usd', 0):,.2f} final bankroll, "
         f"{res.get('baseline_roi_pct', 0):+.1f}% ROI over {res.get('baseline_bets', 0)} races "
-        f"— the +EV strategy is **{vs_delta:+.1f}pp** ROI {'ahead' if vs_delta >= 0 else 'behind'} of naive favorite-backing."
+        f"— the Bet Generator is **{vs_delta:+.1f}pp** ROI {'ahead' if vs_delta >= 0 else 'behind'} of naive favorite-backing. "
+        f"It bet on {res['total_bets']} of {res.get('races_considered', res['total_bets'])} races, "
+        f"sitting out {res.get('races_skipped', 0)} with no edge."
     )
 
     st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
@@ -54,6 +61,25 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
     # Plot Equity Curve
     fig_eq = EquineVisualization3D.build_backtest_equity_curve_chart(res)
     st.plotly_chart(fig_eq, width="stretch", config={"responsive": True, "displayModeBar": False})
+
+    # Bet Type Breakdown
+    if res.get("bet_type_breakdown"):
+        st.markdown("<h5 style='color: var(--text-primary, #0F172A); font-weight: 800; animation: fadeIn 0.4s ease;'>🎯 PERFORMANCE BY BET TYPE</h5>", unsafe_allow_html=True)
+        st.dataframe(
+            [
+                {
+                    "Bet Type": row["bet_type"],
+                    "Bets Placed": row["count"],
+                    "Win Rate": f"{row['win_rate_pct']:.1f}%",
+                    "Net P/L": f"${row['profit_usd']:+,.2f}"
+                }
+                for row in res["bet_type_breakdown"]
+            ],
+            width="stretch",
+            hide_index=True
+        )
+
+    st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
 
     # Trade Execution History Table
     st.markdown("<h5 style='color: var(--text-primary, #0F172A); font-weight: 800; animation: fadeIn 0.4s ease;'>📋 QUANTITATIVE TRADE EXECUTION LOG</h5>", unsafe_allow_html=True)
@@ -64,9 +90,10 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
                     "Trade #": b["trade_id"],
                     "Date": b["date"],
                     "Course": b["course"],
-                    "Horse / Ticker": f"{b['horse']} ({b['ticker']})",
+                    "Bet Type": b["bet_type"],
+                    "Runner(s)": b["runners"],
+                    "Confidence": f"{b['confidence_pct']:.0f}/100",
                     "Odds": f"{b['odds']:.2f}",
-                    "Seabiscuit EV": f"{b['ev_pct']:+.1f}%",
                     "Stake": f"${b['stake_usd']:.2f}",
                     "Outcome": b["outcome"],
                     "Net P/L": f"${b['net_pl_usd']:+,.2f}",
