@@ -2,7 +2,7 @@
 SEABISCUIT - DeepSeek AI Executive Market Intelligence Engine
 Queries DeepSeek-R1 / DeepSeek-V3 API via DEEPSEEK_API_KEY or synthesizes algorithmic quantitative dossiers.
 Both paths end by running the race through SeabiscuitBetGenerator (bet_generator_engine.py) to
-produce a concrete Gagnant/Duo/Quinté+ recommendation — or no bet at all.
+produce a concrete Gagnant recommendation — or no bet at all.
 """
 
 import os
@@ -54,13 +54,7 @@ class DeepSeekIntelEngine:
                 "bar — sitting this one out is the disciplined play."
             )
 
-        bet_type_labels = {
-            "GAGNANT": "🥇 Gagnant (Win)",
-            "PLACE": "🥈 Placé (Place)",
-            "DUO": "👯 Couplé Duo (Exacta)",
-            "TRIO": "🥉 Trio (Trifecta)",
-            "QUINTE": "🏆 Quinté+ (Top 5)"
-        }
+        bet_type_labels = {"GAGNANT": "🥇 Gagnant (Win)"}
         label = bet_type_labels.get(rec["bet_type"], rec["bet_type"])
         runners = ", ".join(rec["runner_names"])
 

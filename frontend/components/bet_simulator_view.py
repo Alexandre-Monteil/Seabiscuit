@@ -12,11 +12,7 @@ from frontend.html_utils import compact_html
 
 
 _BET_TYPE_LABELS = {
-    "GAGNANT": "🥇 GAGNANT (WIN)",
-    "PLACE": "🥈 PLACÉ (PLACE)",
-    "DUO": "👯 COUPLÉ DUO (EXACTA)",
-    "TRIO": "🥉 TRIO (TRIFECTA)",
-    "QUINTE": "🏆 QUINTÉ+ (TOP 5)"
+    "GAGNANT": "🥇 GAGNANT (WIN)"
 }
 
 

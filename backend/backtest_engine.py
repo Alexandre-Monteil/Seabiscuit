@@ -1,8 +1,9 @@
 """
 SEABISCUIT - Quantitative Bet Generator Backtest & Bankroll Equity Curve Engine
 Simulates cumulative P/L, ROI %, Win Rate %, Sharpe Ratio, and Drawdown for the SEABISCUIT
-Bet Generator strategy (Gagnant, Duo, or Quinté+ per race, or no bet at all — see
-bet_generator_engine.py) rather than flat-staking whichever single runner has max EV%.
+Bet Generator strategy (a straight Gagnant bet on the top sanely-priced runner, or no bet
+at all — see bet_generator_engine.py) rather than flat-staking whichever single runner has
+max nominal EV%.
 """
 
 from typing import List, Dict, Any
@@ -26,22 +27,17 @@ class EquineBacktestEngine:
 
     @classmethod
     def run_ev_strategy_backtest(cls, racecards: List[Dict[str, Any]], initial_bankroll_usd: float = 1000.0,
-                                  unit_bet_usd: float = 25.0, seed: int = 42) -> Dict[str, Any]:
+                                  unit_bet_usd: float = 10.0, seed: int = 42) -> Dict[str, Any]:
         """
-        Runs the SEABISCUIT Bet Generator across all races: for each one, the generator picks
-        a bet type (Gagnant, Duo, or Quinté+) and target runner(s) from the combined
-        quantitative + qualitative signals, or skips the race entirely when there's no edge.
-        A single Plackett-Luce outcome is sampled per race and used to settle both the
-        generated bet and the "always back the favorite" baseline, so the two are compared
-        against the same realized result rather than independent random draws.
+        Runs the SEABISCUIT Bet Generator across all races: for each one, the generator either
+        backs the top-rated sanely-priced runner to win, or skips the race entirely when there's
+        no qualifying edge. A single Plackett-Luce outcome is sampled per race and used to
+        settle both the generated bet and the "always back the favorite" baseline, so the two
+        are compared against the same realized result rather than independent random draws.
 
-        Stakes are sized as a half-Kelly fraction of the CURRENT bankroll (capped at 25% per
-        bet, same cap as the live Kelly sizing shown elsewhere) rather than a fixed dollar
-        amount — a fixed stake can drive the bankroll negative once it drops below the stake
-        size, which can't happen in reality (you can't bet more than you have) and can't happen
-        here either since a fraction of a positive bankroll is always smaller than the bankroll.
-        `unit_bet_usd` is still used for the flat-stake favorite-backing baseline, since that's
-        meant to represent a naive bettor's fixed-stake habit for comparison.
+        Both the strategy and the baseline stake a flat `unit_bet_usd` per bet — simple to
+        understand and hand-check — but stop betting once the bankroll can't cover the stake
+        rather than going negative, same as a real bettor going bust.
         """
         if not racecards:
             return cls._empty_backtest(initial_bankroll_usd)
@@ -70,6 +66,7 @@ class EquineBacktestEngine:
         returns_list = []
         bet_type_stats: Dict[str, Dict[str, float]] = {}
         races_skipped = 0
+        strategy_busted = False
 
         baseline_curve = [initial_bankroll_usd]
         baseline_bankroll = initial_bankroll_usd
@@ -77,7 +74,6 @@ class EquineBacktestEngine:
         baseline_wins = 0
         baseline_staked = 0.0
         baseline_profit = 0.0
-
         baseline_busted = False
 
         for idx, rc in enumerate(processed_cards):
@@ -93,9 +89,7 @@ class EquineBacktestEngine:
             # One realized outcome per race, shared by the generated bet and the baseline.
             outcome_order = EquineMonteCarloEngine.sample_single_outcome(assets, seed=race_seed)
 
-            # --- Baseline: always back the market favorite, flat stake — but a naive bettor
-            # still can't stake more than they have, so betting stops once busted rather than
-            # going negative.
+            # --- Baseline: always back the market favorite, flat stake ---
             if not baseline_busted and baseline_bankroll >= unit_bet_usd:
                 favorite = min(assets, key=lambda a: safe_float(a.get("decimal_odds"), default=99.0))
                 fav_odds = safe_float(favorite.get("decimal_odds"), default=4.0)
@@ -113,57 +107,36 @@ class EquineBacktestEngine:
                 if baseline_bankroll < unit_bet_usd:
                     baseline_busted = True
 
-            # --- SEABISCUIT Bet Generator ---
-            if current_bankroll < 1.0:
-                continue  # busted — a fraction of ~$0 rounds to nothing, stop simulating bets
+            # --- SEABISCUIT Bet Generator: flat stake, stop once busted ---
+            if strategy_busted or current_bankroll < unit_bet_usd:
+                strategy_busted = True
+                continue
 
             rec = SeabiscuitBetGenerator.generate_bet(rc)
             if rec is None:
                 races_skipped += 1
                 continue
 
-            bet_type = rec["bet_type"]
-            target_tickers = rec["runners"]
+            target_ticker = rec["runners"][0]
+            runner = next((a for a in assets if a.get("ticker") == target_ticker), assets[0])
+            odds = safe_float(runner.get("decimal_odds"), default=4.0)
+            won = bool(outcome_order and outcome_order[0] == target_ticker)
 
-            if bet_type == "GAGNANT":
-                # Real market odds vs the model's own probability — a genuine, computable edge,
-                # so a real half-Kelly fraction applies.
-                runner = next((a for a in assets if a.get("ticker") == target_tickers[0]), assets[0])
-                odds = safe_float(runner.get("decimal_odds"), default=4.0)
-                won = bool(outcome_order and outcome_order[0] == target_tickers[0])
-                kelly_pct = safe_float(runner.get("kelly_stake_pct"), default=0.0)
-                stake = round(max(1.0, current_bankroll * (kelly_pct / 100.0)), 2)
-            else:
-                # Duo/Quinté are priced against our OWN model-derived fair odds (no real pool
-                # dividend data available to backtest against), so Kelly on that is circular —
-                # by construction, EV against your own fair price is always exactly -takeout%.
-                # Flat 1% stake, tracked for participation/hit-rate only, not a claimed edge.
-                if bet_type == "DUO":
-                    combo = EquineMonteCarloEngine.simulate_combo_probability(assets, target_tickers, exact_order=False, n_sims=6000, seed=race_seed + 1)
-                    won = set(target_tickers) == set(outcome_order[:2])
-                else:  # QUINTE
-                    combo = EquineMonteCarloEngine.simulate_combo_probability(assets, target_tickers, exact_order=False, n_sims=10000, seed=race_seed + 3)
-                    won = set(target_tickers) == set(outcome_order[:5])
-                odds = combo["fair_odds"]
-                stake = round(max(1.0, current_bankroll * 0.01), 2)
-
-            stake = min(stake, current_bankroll)
-
-            payout = stake * odds if won else 0.0
-            net_pl = payout - stake
+            payout = unit_bet_usd * odds if won else 0.0
+            net_pl = payout - unit_bet_usd
 
             current_bankroll += net_pl
-            total_staked += stake
+            total_staked += unit_bet_usd
             total_profit += net_pl
             total_bets += 1
             if won:
                 winning_bets += 1
 
-            returns_list.append(net_pl / stake)
+            returns_list.append(net_pl / unit_bet_usd)
             equity_curve.append(round(current_bankroll, 2))
-            dates.append(f"Race #{idx+1} ({bet_type})")
+            dates.append(f"Race #{idx+1}")
 
-            stats = bet_type_stats.setdefault(bet_type, {"count": 0, "wins": 0, "profit": 0.0})
+            stats = bet_type_stats.setdefault(rec["bet_type"], {"count": 0, "wins": 0, "profit": 0.0})
             stats["count"] += 1
             stats["wins"] += int(won)
             stats["profit"] += net_pl
@@ -173,11 +146,11 @@ class EquineBacktestEngine:
                 "date": race_date,
                 "course": course,
                 "race": race_name,
-                "bet_type": bet_type,
+                "bet_type": rec["bet_type"],
                 "runners": " + ".join(rec["runner_names"]),
                 "confidence_pct": rec["confidence_pct"],
                 "odds": odds,
-                "stake_usd": stake,
+                "stake_usd": unit_bet_usd,
                 "outcome": "🏆 WIN" if won else "❌ LOST",
                 "payout_usd": round(payout, 2),
                 "net_pl_usd": round(net_pl, 2),

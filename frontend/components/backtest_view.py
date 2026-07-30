@@ -21,15 +21,15 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
     st.markdown(compact_html("""
     <div class="glass-card" style="border-top: 4px solid var(--accent-emerald, #10B981); padding: 18px 24px; margin-bottom: 20px; animation: fadeIn 0.5s ease;">
         <h3 style="color: #047857; margin-top: 0; font-weight: 900; font-family: 'Outfit', sans-serif;">📈 SEABISCUIT BET GENERATOR BACKTEST & P/L TRACKER</h3>
-        <p style="color: var(--text-muted, #475569); font-size: 0.92rem; margin-bottom: 0; font-weight: 600;">Simulates the SEABISCUIT Bet Generator's actual picks — Gagnant, Duo, or Quinté+ chosen per race from quant + qualitative signals, or no bet at all — not just backing whichever runner has the highest EV%.</p>
+        <p style="color: var(--text-muted, #475569); font-size: 0.92rem; margin-bottom: 0; font-weight: 600;">Simulates the SEABISCUIT Bet Generator's actual picks — a flat-stake Gagnant bet on the top sanely-priced runner (≤20-1) when it clears the EV bar, or no bet at all — not just backing whichever runner has the highest nominal EV%.</p>
     </div>
     """), unsafe_allow_html=True)
 
     b_col1, b_col2 = st.columns([1, 3])
     with b_col1:
         initial_capital = st.number_input("Initial Capital ($):", min_value=100.0, max_value=10000.0, value=1000.0, step=100.0, key="bt_capital")
-        unit_stake = st.number_input("Baseline Fixed Stake per Bet ($):", min_value=5.0, max_value=500.0, value=25.0, step=5.0, key="bt_stake",
-                                      help="Only used by the 'always back the favorite' baseline. The SEABISCUIT strategy itself stakes a half-Kelly fraction of its current bankroll per bet, capped at 25% — so it can shrink but can never go negative.")
+        unit_stake = st.number_input("Fixed Stake per Bet ($):", min_value=1.0, max_value=500.0, value=10.0, step=1.0, key="bt_stake",
+                                      help="Same flat stake for the strategy and the favorite-backing baseline, for simplicity. Betting stops once the bankroll can't cover the stake — it can shrink but never go negative.")
 
     res = EquineBacktestEngine.run_ev_strategy_backtest(all_racecards, initial_bankroll_usd=initial_capital, unit_bet_usd=unit_stake)
 
@@ -62,23 +62,6 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
     # Plot Equity Curve
     fig_eq = EquineVisualization3D.build_backtest_equity_curve_chart(res)
     st.plotly_chart(fig_eq, width="stretch", config={"responsive": True, "displayModeBar": False})
-
-    # Bet Type Breakdown
-    if res.get("bet_type_breakdown"):
-        st.markdown("<h5 style='color: var(--text-primary, #0F172A); font-weight: 800; animation: fadeIn 0.4s ease;'>🎯 PERFORMANCE BY BET TYPE</h5>", unsafe_allow_html=True)
-        st.dataframe(
-            [
-                {
-                    "Bet Type": row["bet_type"],
-                    "Bets Placed": row["count"],
-                    "Win Rate": f"{row['win_rate_pct']:.1f}%",
-                    "Net P/L": f"${row['profit_usd']:+,.2f}"
-                }
-                for row in res["bet_type_breakdown"]
-            ],
-            width="stretch",
-            hide_index=True
-        )
 
     st.markdown("<div style='margin-bottom: 14px;'></div>", unsafe_allow_html=True)
 

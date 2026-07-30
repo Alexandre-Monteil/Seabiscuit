@@ -378,6 +378,7 @@ class TheRacingAPIClient:
                 "topspeed": topspeed,
                 "draw": safe_int(self._first_valid_rating(r.get("draw")), default=None),
                 "headgear": r.get("headgear") or None,
+                "first_time_headgear": str(r.get("headgear_run", "")).strip() == "1",
                 "last_run_days": safe_int(self._first_valid_rating(r.get("last_run")), default=None),
                 "trainer_14_days_pct": safe_float((r.get("trainer_14_days") or {}).get("percent"), default=None) if isinstance(r.get("trainer_14_days"), dict) else None,
                 "spotlight": r.get("spotlight") or r.get("comment") or None,
@@ -470,6 +471,7 @@ class TheRacingAPIClient:
                 "topspeed": topspeed,
                 "draw": safe_int(self._first_valid_rating(r.get("draw")), default=None),
                 "headgear": r.get("headgear") or None,
+                "first_time_headgear": False,  # not derivable from settled results (no headgear_run field)
                 "last_run_days": None,
                 "trainer_14_days_pct": None,
                 "spotlight": r.get("comment") or None,

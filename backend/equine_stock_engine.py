@@ -128,6 +128,7 @@ class EquineStockEngine:
             "official_rating": safe_int(runner.get("official_rating"), default=115),
             "draw": runner.get("draw"),
             "headgear": runner.get("headgear"),
+            "first_time_headgear": bool(runner.get("first_time_headgear", False)),
             "best_odds": safe_float(runner.get("best_odds"), default=decimal_odds),
             "n_bookmakers": safe_int(runner.get("n_bookmakers"), default=0),
             "spotlight": runner.get("spotlight"),
