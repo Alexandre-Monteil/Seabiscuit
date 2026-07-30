@@ -20,8 +20,11 @@ def render_top_nav() -> None:
                 </span>
             </div>
             <div style="font-size: 0.85rem; color: var(--text-muted, #475569); font-weight: 800; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px;">
-                HORSE RACING QUANT TERMINAL
+                HORSE RACING ANALYTICS TERMINAL
             </div>
+        </div>
+        <div style="margin-top: 8px; font-size: 0.76rem; color: var(--text-muted, #64748B); font-weight: 600;">
+            📊 Analysis &amp; simulation tool. Out-of-sample testing on real GB results (8 months train / 4 months held-out test, zero overlap) found <b>no validated profitable edge</b> — every number here is a model estimate to explore, not a proven strategy.
         </div>
     </div>
     """), unsafe_allow_html=True)

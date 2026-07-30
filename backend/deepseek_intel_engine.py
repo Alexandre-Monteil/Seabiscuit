@@ -44,14 +44,16 @@ class DeepSeekIntelEngine:
 
     @staticmethod
     def _format_bet_recommendation_markdown(rec: Optional[Dict[str, Any]]) -> str:
-        """Renders the bet generator's decision as a dossier section, shared by both the
-        live-LLM and algorithmic fallback paths so the recommendation is always present."""
+        """Renders the bet generator's read of the race as a dossier section, shared by both
+        the live-LLM and algorithmic fallback paths. Framed as a model view, not a tip:
+        out-of-sample testing (trained on 8 months of real GB results, tested on the following
+        4 months it never saw) found zero qualifying bets — no validated edge survived that
+        split, so this is a data point to explore, not proof of a profitable strategy."""
         if rec is None:
             return (
-                "## 🎯 SEABISCUIT RECOMMENDED BET\n\n"
+                "## 🔎 SEABISCUIT MODEL VIEW\n\n"
                 "> [!NOTE]\n"
-                "> **No bet.** No runner in this race clears SEABISCUIT's positive expected-value "
-                "bar — sitting this one out is the disciplined play."
+                "> **No signal.** No runner in this race clears the model's expected-value bar."
             )
 
         bet_type_labels = {"GAGNANT": "🥇 Gagnant (Win)"}
@@ -59,13 +61,16 @@ class DeepSeekIntelEngine:
         runners = ", ".join(rec["runner_names"])
 
         return (
-            "## 🎯 SEABISCUIT RECOMMENDED BET\n\n"
+            "## 🔎 SEABISCUIT MODEL VIEW\n\n"
             f"> [!IMPORTANT]\n"
             f"> **{label}**: {runners}\n"
             f"> \n"
-            f"> **Confidence**: {rec['confidence_pct']:.0f}/100 · **Model Edge**: {rec['top_ev_pct']:+.1f}% EV\n"
+            f"> **Confidence**: {rec['confidence_pct']:.0f}/100 · **Model EV**: {rec['top_ev_pct']:+.1f}%\n"
             f"> \n"
-            f"> {rec['rationale']}"
+            f"> {rec['rationale']}\n"
+            f"> \n"
+            f"> *Out-of-sample validation found no profitable edge over ~3,700 held-out real races — "
+            f"treat this as analysis, not a tip.*"
         )
 
     def generate_race_dossier(self, racecard: Dict[str, Any]) -> Dict[str, Any]:

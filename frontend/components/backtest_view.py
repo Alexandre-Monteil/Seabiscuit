@@ -25,6 +25,17 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
     </div>
     """), unsafe_allow_html=True)
 
+    st.warning(
+        "⚠️ **The numbers below are from data the model was also trained on** (recent races, "
+        "same rolling window used to fit the A/E model) — they will look better than reality. "
+        "When we split the data properly (trained on 8 months, tested on the following 4 months "
+        "the model never saw), it found **zero qualifying bets across ~3,700 real races** — no "
+        "validated edge survived. Treat this backtest as an illustration of how the generator "
+        "behaves, not evidence it's profitable."
+    )
+
+    st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+
     b_col1, b_col2 = st.columns([1, 3])
     with b_col1:
         initial_capital = st.number_input("Initial Capital ($):", min_value=100.0, max_value=10000.0, value=1000.0, step=100.0, key="bt_capital")
@@ -40,7 +51,7 @@ def render_backtest_view(all_racecards: List[Dict[str, Any]]):
     # Key Backtest KPIs
     k1, k2, k3, k4, k5 = st.columns(5)
     k1.metric("Final Bankroll", f"${res['final_bankroll_usd']:,.2f}", delta=f"${res['total_profit_usd']:+,.2f}")
-    k2.metric("Cumulative ROI", f"{res['roi_pct']:+.1f}%", delta="🟢 Alpha Edge" if res['roi_pct'] > 0 else "🔴 -EV")
+    k2.metric("Cumulative ROI", f"{res['roi_pct']:+.1f}%")
     k3.metric("Win Rate %", f"{res['win_rate_pct']:.1f}%", delta=f"{res['winning_bets']}/{res['total_bets']} Wins")
     k4.metric("Sharpe Ratio", f"{res['sharpe_ratio']:.2f}")
     k5.metric("Max Drawdown", f"-{res['max_drawdown_pct']:.1f}%")

@@ -17,12 +17,14 @@ _BET_TYPE_LABELS = {
 
 
 def _recommendation_banner(rec: Optional[Dict[str, Any]]) -> str:
-    """Renders the SeabiscuitBetGenerator's pick (or no-bet call) as a callout banner."""
+    """Renders the SeabiscuitBetGenerator's read of the race (or no-signal call) as a callout
+    banner. Framed as a model view to explore, not a tip — out-of-sample testing on real GB
+    results found no validated profitable edge (see top nav caption)."""
     if rec is None:
         return compact_html("""
         <div class="glass-card" style="border-top:4px solid #94A3B8;padding:16px 22px;margin-bottom:14px;animation:fadeIn 0.4s ease;">
-            <span style="font-weight:900;color:#475569;">⚪ SEABISCUIT RECOMMENDS: NO BET</span>
-            <span style="color:#64748B;font-size:0.85rem;"> — no runner in this race clears the positive-EV bar. Sitting it out is the disciplined play.</span>
+            <span style="font-weight:900;color:#475569;">⚪ MODEL VIEW: NO SIGNAL</span>
+            <span style="color:#64748B;font-size:0.85rem;"> — no runner in this race clears the model's EV bar.</span>
         </div>
         """)
 
@@ -32,12 +34,12 @@ def _recommendation_banner(rec: Optional[Dict[str, Any]]) -> str:
     <div class="glass-card" style="border-top:4px solid #10B981;padding:16px 22px;margin-bottom:14px;animation:fadeIn 0.4s ease;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
             <div>
-                <span style="font-weight:900;color:#047857;">🎯 SEABISCUIT RECOMMENDS: {label}</span>
+                <span style="font-weight:900;color:#047857;">🔎 MODEL VIEW: {label}</span>
                 <span style="color:#0F172A;font-weight:700;"> — {runners}</span>
             </div>
             <span style="background:#ECFDF5;color:#047857;border:1px solid #A7F3D0;font-weight:800;padding:3px 10px;border-radius:8px;font-size:0.78rem;">Confidence {rec['confidence_pct']:.0f}/100 · EV {rec['top_ev_pct']:+.1f}%</span>
         </div>
-        <div style="color:#64748B;font-size:0.82rem;margin-top:4px;">{rec['rationale']}</div>
+        <div style="color:#64748B;font-size:0.82rem;margin-top:4px;">{rec['rationale']} No validated out-of-sample edge — treat as a data point, not a tip.</div>
     </div>
     """)
 
