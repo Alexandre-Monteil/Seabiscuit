@@ -13,27 +13,57 @@ import pandas as pd
 try:
     from .utils import safe_float
     from .equine_stock_engine import EquineStockEngine
-    from .monte_carlo_engine import EquineMonteCarloEngine
     from .bet_generator_engine import SeabiscuitBetGenerator
 except (ImportError, ValueError):
     from backend.utils import safe_float
     from backend.equine_stock_engine import EquineStockEngine
-    from backend.monte_carlo_engine import EquineMonteCarloEngine
     from backend.bet_generator_engine import SeabiscuitBetGenerator
 
 
 class EquineBacktestEngine:
     """Quantitative Bet Generator Backtest & P/L Tracking Suite."""
 
+    @staticmethod
+    def _has_real_result(assets: List[Dict[str, Any]]) -> bool:
+        """True only for races normalized from settled /v1/results (see
+        theracingapi_client._normalize_result_as_racecard), which carry a real
+        finishing_position per runner. Live today/tomorrow racecards have no result yet —
+        there's nothing to backtest against, so they're excluded rather than simulated."""
+        return any(a.get("finishing_position") for a in assets)
+
+    @staticmethod
+    def _real_outcome_order(assets: List[Dict[str, Any]]) -> List[str]:
+        """Builds the actual finishing order (tickers, 1st to last) from each runner's real
+        settled finishing_position. Non-numeric positions (fell, pulled up, etc.) sort last."""
+        def pos_key(a: Dict[str, Any]) -> int:
+            try:
+                return int(str(a.get("finishing_position", "")).strip())
+            except (ValueError, TypeError):
+                return 999
+        return [a.get("ticker") for a in sorted(assets, key=pos_key)]
+
+    @staticmethod
+    def _chronological_sort_key(rc: Dict[str, Any]):
+        """(date, minutes-since-midnight) so races are walked oldest-to-newest — the equity
+        curve should read as a walk forward through real history, not API response order."""
+        date_str = str(rc.get("race_date", "1900-01-01"))
+        time_part = str(rc.get("post_time", "00:00")).split(" ")[0]
+        try:
+            hh, mm = time_part.split(":")
+            minutes = int(hh) * 60 + int(mm[:2])
+        except (ValueError, IndexError):
+            minutes = 0
+        return (date_str, minutes)
+
     @classmethod
     def run_ev_strategy_backtest(cls, racecards: List[Dict[str, Any]], initial_bankroll_usd: float = 1000.0,
                                   unit_bet_usd: float = 10.0, seed: int = 42) -> Dict[str, Any]:
         """
-        Runs the SEABISCUIT Bet Generator across all races: for each one, the generator either
-        backs the top-rated sanely-priced runner to win, or skips the race entirely when there's
-        no qualifying edge. A single Plackett-Luce outcome is sampled per race and used to
-        settle both the generated bet and the "always back the favorite" baseline, so the two
-        are compared against the same realized result rather than independent random draws.
+        Runs the SEABISCUIT Bet Generator against real, settled race results only (racecards
+        normalized from /v1/results — see theracingapi_client.py), walked in chronological order.
+        Live today/tomorrow racecards have no result yet, so they're excluded from the backtest
+        entirely rather than settled against a simulated outcome, which would test the model
+        against its own assumptions instead of against what actually happened.
 
         Both the strategy and the baseline stake a flat `unit_bet_usd` per bet — simple to
         understand and hand-check — but stop betting once the bankroll can't cover the stake
@@ -50,10 +80,14 @@ class EquineBacktestEngine:
                 else:
                     processed_cards.append(EquineStockEngine.process_racecard(rc))
 
-        if not processed_cards:
-            return cls._empty_backtest(initial_bankroll_usd)
+        backtestable_cards = [
+            rc for rc in processed_cards
+            if cls._has_real_result([a for a in rc.get("equity_assets", []) if isinstance(a, dict)])
+        ]
+        backtestable_cards.sort(key=cls._chronological_sort_key)
 
-        rng = np.random.default_rng(seed)
+        if not backtestable_cards:
+            return cls._empty_backtest(initial_bankroll_usd)
 
         bets_history = []
         equity_curve = [initial_bankroll_usd]
@@ -76,7 +110,7 @@ class EquineBacktestEngine:
         baseline_profit = 0.0
         baseline_busted = False
 
-        for idx, rc in enumerate(processed_cards):
+        for idx, rc in enumerate(backtestable_cards):
             assets = [a for a in rc.get("equity_assets", []) if isinstance(a, dict)]
             if len(assets) < 2:
                 continue
@@ -84,10 +118,10 @@ class EquineBacktestEngine:
             race_name = str(rc.get("race_name", "Race"))
             race_date = str(rc.get("race_date", "2026-07-24"))
             course = str(rc.get("course", "Track"))
-            race_seed = int(rng.integers(0, 2**31))
 
-            # One realized outcome per race, shared by the generated bet and the baseline.
-            outcome_order = EquineMonteCarloEngine.sample_single_outcome(assets, seed=race_seed)
+            # The REAL finishing order for this race — shared by the generated bet and the
+            # baseline, both settled against what actually happened.
+            outcome_order = cls._real_outcome_order(assets)
 
             # --- Baseline: always back the market favorite, flat stake ---
             if not baseline_busted and baseline_bankroll >= unit_bet_usd:
@@ -134,7 +168,7 @@ class EquineBacktestEngine:
 
             returns_list.append(net_pl / unit_bet_usd)
             equity_curve.append(round(current_bankroll, 2))
-            dates.append(f"Race #{idx+1}")
+            dates.append(f"{race_date} #{idx+1}")
 
             stats = bet_type_stats.setdefault(rec["bet_type"], {"count": 0, "wins": 0, "profit": 0.0})
             stats["count"] += 1
@@ -170,7 +204,7 @@ class EquineBacktestEngine:
         if total_bets == 0:
             result = cls._empty_backtest(initial_bankroll_usd)
             result["races_skipped"] = races_skipped
-            result["races_considered"] = len(processed_cards)
+            result["races_considered"] = len(backtestable_cards)
             result["baseline_final_bankroll_usd"] = round(baseline_bankroll, 2)
             result["baseline_roi_pct"] = baseline_roi_pct
             result["baseline_win_rate_pct"] = baseline_win_rate_pct
@@ -216,7 +250,7 @@ class EquineBacktestEngine:
             "equity_df": df_equity,
             "bets_history": bets_history,
             "bet_type_breakdown": bet_type_breakdown,
-            "races_considered": len(processed_cards),
+            "races_considered": len(backtestable_cards),
             "races_skipped": races_skipped,
             "baseline_final_bankroll_usd": round(baseline_bankroll, 2),
             "baseline_roi_pct": baseline_roi_pct,

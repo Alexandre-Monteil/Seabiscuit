@@ -133,7 +133,8 @@ class EquineStockEngine:
             "n_bookmakers": safe_int(runner.get("n_bookmakers"), default=0),
             "spotlight": runner.get("spotlight"),
             "career_prize_usd": safe_float(runner.get("career_prize_usd"), default=450000.0),
-            "past_places": runner.get("past_places", [])
+            "past_places": runner.get("past_places", []),
+            "finishing_position": runner.get("finishing_position")
         }
 
     @classmethod
