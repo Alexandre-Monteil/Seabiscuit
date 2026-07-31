@@ -38,7 +38,6 @@ from frontend.components.stock_cards import render_stock_asset_cards
 from frontend.components.horse_detail_view import render_horse_detail_view
 from frontend.components.intel_modal import render_intel_dossier_modal
 from frontend.components.bet_simulator_view import render_bet_simulator_view
-from frontend.components.backtest_view import render_backtest_view
 from frontend.html_utils import compact_html
 
 # Streamlit Page Setup
@@ -383,14 +382,6 @@ def main():
         st.markdown("---")
 
     render_stock_asset_cards(equity_assets)
-
-    st.markdown("---")
-
-    # ---------------------------------------------------------
-    # SECTION 4: STRATEGY BACKTEST EQUITIES & P/L TRACKER
-    # ---------------------------------------------------------
-    with st.expander("📈 SEABISCUIT +EV STRATEGY BACKTEST & CUMULATIVE P/L TRACKER", expanded=False):
-        render_backtest_view(all_racecards)
 
     st.markdown("---")
 

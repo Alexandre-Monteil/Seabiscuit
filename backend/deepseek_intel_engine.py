@@ -1,23 +1,18 @@
 """
 SEABISCUIT - DeepSeek AI Executive Market Intelligence Engine
 Queries DeepSeek-R1 / DeepSeek-V3 API via DEEPSEEK_API_KEY or synthesizes algorithmic quantitative dossiers.
-Both paths end by running the race through SeabiscuitBetGenerator (bet_generator_engine.py) to
-produce a concrete Gagnant recommendation — or no bet at all.
 """
 
 import os
-import re
 import time
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import httpx
 from dotenv import load_dotenv
 
 try:
     from .utils import safe_float
-    from .bet_generator_engine import SeabiscuitBetGenerator
 except (ImportError, ValueError):
     from backend.utils import safe_float
-    from backend.bet_generator_engine import SeabiscuitBetGenerator
 
 load_dotenv()
 
@@ -30,52 +25,8 @@ class DeepSeekIntelEngine:
         self.base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
         self.client = httpx.Client(timeout=15.0) if self.api_key else None
 
-    @staticmethod
-    def _parse_confidence_score(text: str) -> Optional[float]:
-        """Extracts the SEABISCUIT_CONFIDENCE: <0-100> line the live prompt asks the model
-        to end its response with. Returns None if absent or unparsable."""
-        match = re.search(r"SEABISCUIT_CONFIDENCE:\s*(\d+(?:\.\d+)?)", text)
-        if not match:
-            return None
-        try:
-            return max(0.0, min(100.0, float(match.group(1))))
-        except ValueError:
-            return None
-
-    @staticmethod
-    def _format_bet_recommendation_markdown(rec: Optional[Dict[str, Any]]) -> str:
-        """Renders the bet generator's read of the race as a dossier section, shared by both
-        the live-LLM and algorithmic fallback paths. Framed as a model view, not a tip:
-        out-of-sample testing (trained on 8 months of real GB results, tested on the following
-        4 months it never saw) found zero qualifying bets — no validated edge survived that
-        split, so this is a data point to explore, not proof of a profitable strategy."""
-        if rec is None:
-            return (
-                "## 🔎 SEABISCUIT MODEL VIEW\n\n"
-                "> [!NOTE]\n"
-                "> **No signal.** No runner in this race clears the model's expected-value bar."
-            )
-
-        bet_type_labels = {"GAGNANT": "🥇 Gagnant (Win)"}
-        label = bet_type_labels.get(rec["bet_type"], rec["bet_type"])
-        runners = ", ".join(rec["runner_names"])
-
-        return (
-            "## 🔎 SEABISCUIT MODEL VIEW\n\n"
-            f"> [!IMPORTANT]\n"
-            f"> **{label}**: {runners}\n"
-            f"> \n"
-            f"> **Confidence**: {rec['confidence_pct']:.0f}/100 · **Model EV**: {rec['top_ev_pct']:+.1f}%\n"
-            f"> \n"
-            f"> {rec['rationale']}\n"
-            f"> \n"
-            f"> *Out-of-sample validation found no profitable edge over ~3,700 held-out real races — "
-            f"treat this as analysis, not a tip.*"
-        )
-
     def generate_race_dossier(self, racecard: Dict[str, Any]) -> Dict[str, Any]:
-        """Generates an executive quantitative intelligence dossier for a racecard, ending
-        with a concrete SEABISCUIT bet recommendation."""
+        """Generates an executive quantitative intelligence dossier for a racecard."""
         course = racecard.get("course", "Royal Ascot")
         race_name = racecard.get("race_name", "Group 1 Stakes")
         going = racecard.get("going", "Good to Firm")
@@ -97,14 +48,10 @@ Equine Stock Assets:
                     prompt += f"- {asset.get('ticker')} ({asset.get('horse')}): Share Price=${asset.get('share_price_usd')}, Odds={asset.get('decimal_odds')}, A/E={asset.get('ae_ratio')}, 1-Unit P/L=${asset.get('one_unit_pl')}, Beyer={asset.get('beyer_speed')}, Jockey={asset.get('jockey')}, Owner={asset.get('owner')}\n"
 
                 prompt += (
-                    "\nDeliver a high-impact 4-part dossier: 1. Executive Summary & Alpha Verdict, "
-                    "2. Equine Stock Valuations (+EV Long, Short Fade, Strangle), 3. Track Moisture & "
+                    "\nDeliver a high-impact 4-part dossier: 1. Executive Summary & Market Read, "
+                    "2. Equine Stock Valuations (relative value across the field), 3. Track Moisture & "
                     "Speed Velocity Delta, 4. Pace scenario and connections read (jockey/trainer intent, "
-                    "trip concerns) beyond what the raw numbers show.\n\n"
-                    "Finish your response with exactly one line, on its own, with no other text on that "
-                    "line: SEABISCUIT_CONFIDENCE: <integer 0-100> — your qualitative confidence that the "
-                    "model's top-rated runner's edge is real, factoring in pace and connections beyond the "
-                    "raw stats."
+                    "trip concerns) beyond what the raw numbers show."
                 )
 
                 resp = self.client.post(
@@ -122,15 +69,12 @@ Equine Stock Assets:
                 if resp.status_code == 200:
                     data = resp.json()
                     content = data["choices"][0]["message"]["content"]
-                    confidence = self._parse_confidence_score(content)
-                    rec = SeabiscuitBetGenerator.generate_bet(racecard, qual_confidence_override=confidence)
 
                     return {
                         "status": "success",
                         "model_used": "DeepSeek-V3 / DeepSeek-R1 (Live API)",
                         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S GMT"),
-                        "dossier_markdown": content + "\n\n---\n\n" + self._format_bet_recommendation_markdown(rec),
-                        "recommended_bet": rec
+                        "dossier_markdown": content
                     }
             except Exception:
                 pass
@@ -141,8 +85,6 @@ Equine Stock Assets:
 
         top_buy = value_buys[0] if value_buys else (equity_assets[0] if equity_assets else {})
         top_fade = fades[0] if fades else (equity_assets[-1] if len(equity_assets) > 1 else {})
-
-        rec = SeabiscuitBetGenerator.generate_bet(racecard)
 
         markdown_dossier = f"""# 🏇 EXECUTIVE MARKET INTELLIGENCE DOSSIER: {course.upper()}
 
@@ -183,16 +125,11 @@ Current track moisture of **{moisture}% ({going})** creates a high-friction surf
 
 - **Elite Power Combo**: `{top_buy.get('jockey')}` x `{top_buy.get('owner')}` demonstrates an institutional A/E ratio of **{top_buy.get('ae_ratio', 1.16)}** across Group 1 race classes.
 - **Friction Warning**: Trainer `{top_fade.get('trainer', 'Trainer')}` shows declining win frequency on `{going}` surfaces.
-
----
-
-{self._format_bet_recommendation_markdown(rec)}
 """
 
         return {
             "status": "success",
             "model_used": "DeepSeek Quantitative Algorithmic Synthesizer (Fallback Mode)",
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S GMT"),
-            "dossier_markdown": markdown_dossier,
-            "recommended_bet": rec
+            "dossier_markdown": markdown_dossier
         }

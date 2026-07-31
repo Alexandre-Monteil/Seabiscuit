@@ -157,27 +157,6 @@ class EquineMonteCarloEngine:
         }
 
     @classmethod
-    def sample_single_outcome(cls, equity_assets: List[Dict[str, Any]], seed: int = None) -> List[str]:
-        """Draws ONE Plackett-Luce finishing order (list of tickers, 1st to last) — used by
-        backtest_engine.py to evaluate whether a specific generated bet would have hit against
-        a single realized race result, as opposed to the frequency statistics from simulate_race."""
-        valid = [a for a in equity_assets if isinstance(a, dict)]
-        n_runners = len(valid)
-        if n_runners == 0:
-            return []
-
-        tickers = [str(a.get("ticker", f"$RUNNER_{i}")) for i, a in enumerate(valid)]
-        strengths = np.array([max(1e-4, safe_float(a.get("win_percent"), default=1.0 / n_runners)) for a in valid])
-        strengths = strengths / strengths.sum()
-        log_strength = np.log(strengths)
-
-        rng = np.random.default_rng(seed)
-        gumbel_noise = -np.log(-np.log(np.clip(rng.random(n_runners), 1e-12, 1.0 - 1e-12)))
-        order = np.argsort(-(log_strength + gumbel_noise))
-
-        return [tickers[i] for i in order]
-
-    @classmethod
     def simulate_exacta_matrix(cls, equity_assets: List[Dict[str, Any]], n_sims: int = 10000,
                                 seed: int = None) -> Dict[str, Any]:
         """Returns the full runner x runner P(row wins, col finishes 2nd) matrix from a single
